@@ -163,7 +163,7 @@ function AnalyticsContent() {
                         dataKey="value"
                       >
                       </Pie>
-                      <Tooltip formatter={(value) => `$${value.toFixed(2)}`} />
+                      <Tooltip formatter={(value) => `$${typeof value === 'number' ? value.toFixed(2) : value}`} />
                     </PieChart>
                   </ResponsiveContainer>
 

@@ -102,8 +102,12 @@ function BudgetSettingsContent() {
           <div className="mb-6 bg-secondary/10 border border-secondary/20 rounded-lg p-4 flex items-start gap-3">
             <div className="w-2 h-2 rounded-full bg-secondary mt-2" />
             <div>
-              <p className="font-semibold text-secondary">Budget saved successfully!</p>
-              <p className="text-sm text-secondary/80">Your budget limits have been updated.</p>
+              <p className="font-semibold text-secondary">
+                Budget saved successfully!
+              </p>
+              <p className="text-sm text-secondary/80">
+                Your budget limits have been updated.
+              </p>
             </div>
           </div>
         )}
@@ -116,13 +120,20 @@ function BudgetSettingsContent() {
                 <DollarSign className="w-6 h-6 text-primary" />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-foreground">Monthly Budget</h2>
-                <p className="text-sm text-muted-foreground">Your total spending limit for the month</p>
+                <h2 className="text-xl font-bold text-foreground">
+                  Monthly Budget
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Your total spending limit for the month
+                </p>
               </div>
             </div>
 
             <div className="mb-4">
-              <Label htmlFor="monthly" className="text-base font-semibold text-foreground mb-3 block">
+              <Label
+                htmlFor="monthly"
+                className="text-base font-semibold text-foreground mb-3 block"
+              >
                 Monthly Spending Limit
               </Label>
               <div className="relative">
@@ -139,29 +150,41 @@ function BudgetSettingsContent() {
                   min="0"
                   className={cn(
                     "text-lg py-6 pl-8",
-                    errors.monthly && "border-destructive"
+                    errors.monthly && "border-destructive",
                   )}
                 />
               </div>
               {errors.monthly && (
-                <p className="text-sm text-destructive mt-2">{errors.monthly}</p>
+                <p className="text-sm text-destructive mt-2">
+                  {errors.monthly}
+                </p>
               )}
             </div>
 
             <div className="bg-slate-50 rounded-lg p-4 space-y-2">
-              <p className="text-sm text-muted-foreground">Recommended allocation:</p>
+              <p className="text-sm text-muted-foreground">
+                Recommended allocation:
+              </p>
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Weekly</p>
-                  <p className="text-lg font-bold text-primary">${(budget.monthly / 4).toFixed(2)}</p>
+                  <p className="text-lg font-bold text-primary">
+                    ${(budget.monthly / 4).toFixed(2)}
+                  </p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">Bi-weekly</p>
-                  <p className="text-lg font-bold text-primary">${(budget.monthly / 2).toFixed(2)}</p>
+                  <p className="text-xs text-muted-foreground mb-1">
+                    Bi-weekly
+                  </p>
+                  <p className="text-lg font-bold text-primary">
+                    ${(budget.monthly / 2).toFixed(2)}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Daily</p>
-                  <p className="text-lg font-bold text-primary">${(budget.monthly / 30).toFixed(2)}</p>
+                  <p className="text-lg font-bold text-primary">
+                    ${(budget.monthly / 30).toFixed(2)}
+                  </p>
                 </div>
               </div>
             </div>
@@ -174,13 +197,20 @@ function BudgetSettingsContent() {
                 <Calendar className="w-6 h-6 text-secondary" />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-foreground">Weekly Budget</h2>
-                <p className="text-sm text-muted-foreground">Your spending limit per week</p>
+                <h2 className="text-xl font-bold text-foreground">
+                  Weekly Budget
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Your spending limit per week
+                </p>
               </div>
             </div>
 
             <div className="mb-4">
-              <Label htmlFor="weekly" className="text-base font-semibold text-foreground mb-3 block">
+              <Label
+                htmlFor="weekly"
+                className="text-base font-semibold text-foreground mb-3 block"
+              >
                 Weekly Spending Limit
               </Label>
               <div className="relative">
@@ -197,7 +227,7 @@ function BudgetSettingsContent() {
                   min="0"
                   className={cn(
                     "text-lg py-6 pl-8",
-                    errors.weekly && "border-destructive"
+                    errors.weekly && "border-destructive",
                   )}
                 />
               </div>
@@ -207,8 +237,12 @@ function BudgetSettingsContent() {
             </div>
 
             <div className="bg-slate-50 rounded-lg p-4">
-              <p className="text-sm text-muted-foreground mb-2">Monthly equivalent:</p>
-              <p className="text-lg font-bold text-secondary">${(budget.weekly * 4.33).toFixed(2)}</p>
+              <p className="text-sm text-muted-foreground mb-2">
+                Monthly equivalent:
+              </p>
+              <p className="text-lg font-bold text-secondary">
+                ${(budget.weekly * 4.33).toFixed(2)}
+              </p>
               <p className="text-xs text-muted-foreground mt-2">
                 (Your monthly budget is ${budget.monthly.toFixed(2)})
               </p>
@@ -222,13 +256,20 @@ function BudgetSettingsContent() {
                 <Target className="w-6 h-6 text-accent" />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-foreground">Savings Goal</h2>
-                <p className="text-sm text-muted-foreground">How much you want to save monthly</p>
+                <h2 className="text-xl font-bold text-foreground">
+                  Savings Goal
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  How much you want to save monthly
+                </p>
               </div>
             </div>
 
             <div className="mb-4">
-              <Label htmlFor="savingsGoal" className="text-base font-semibold text-foreground mb-3 block">
+              <Label
+                htmlFor="savingsGoal"
+                className="text-base font-semibold text-foreground mb-3 block"
+              >
                 Monthly Savings Target
               </Label>
               <div className="relative">
@@ -245,27 +286,39 @@ function BudgetSettingsContent() {
                   min="0"
                   className={cn(
                     "text-lg py-6 pl-8",
-                    errors.savingsGoal && "border-destructive"
+                    errors.savingsGoal && "border-destructive",
                   )}
                 />
               </div>
               {errors.savingsGoal && (
-                <p className="text-sm text-destructive mt-2">{errors.savingsGoal}</p>
+                <p className="text-sm text-destructive mt-2">
+                  {errors.savingsGoal}
+                </p>
               )}
             </div>
 
             <div className="bg-slate-50 rounded-lg p-4 space-y-3">
               <div>
-                <p className="text-sm text-muted-foreground mb-1">Monthly savings target:</p>
-                <p className="text-lg font-bold text-accent">${budget.savingsGoal.toFixed(2)}</p>
+                <p className="text-sm text-muted-foreground mb-1">
+                  Monthly savings target:
+                </p>
+                <p className="text-lg font-bold text-accent">
+                  ${budget.savingsGoal.toFixed(2)}
+                </p>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground mb-1">Yearly savings projection:</p>
-                <p className="text-lg font-bold text-accent">${(budget.savingsGoal * 12).toFixed(2)}</p>
+                <p className="text-sm text-muted-foreground mb-1">
+                  Yearly savings projection:
+                </p>
+                <p className="text-lg font-bold text-accent">
+                  ${(budget.savingsGoal * 12).toFixed(2)}
+                </p>
               </div>
               <div className="pt-2 border-t border-border">
                 <p className="text-xs text-muted-foreground">
-                  You'll need to spend ${(budget.monthly - budget.savingsGoal).toFixed(2)} or less each month to reach this goal.
+                  You'll need to spend $
+                  {(budget.monthly - budget.savingsGoal).toFixed(2)} or less
+                  each month to reach this goal.
                 </p>
               </div>
             </div>

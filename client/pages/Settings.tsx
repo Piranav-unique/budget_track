@@ -16,7 +16,9 @@ function SettingsContent() {
         </Link>
 
         <div className="mb-8">
-          <h1 className="text-3xl md:text-4xl font-bold text-foreground">Settings</h1>
+          <h1 className="text-3xl md:text-4xl font-bold text-foreground">
+            Settings
+          </h1>
           <p className="text-muted-foreground mt-2">
             Customize your budgeting experience
           </p>
@@ -28,9 +30,13 @@ function SettingsContent() {
               <Lightbulb className="w-6 h-6 text-primary" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-foreground">More Features Coming Soon</h2>
+              <h2 className="text-xl font-bold text-foreground">
+                More Features Coming Soon
+              </h2>
               <p className="text-muted-foreground mt-2">
-                We're working on additional settings and customization options. Features like notification preferences, currency settings, and account management will be available soon.
+                We're working on additional settings and customization options.
+                Features like notification preferences, currency settings, and
+                account management will be available soon.
               </p>
               <Button className="mt-4 bg-primary hover:bg-primary/90 text-primary-foreground">
                 Check Back Later

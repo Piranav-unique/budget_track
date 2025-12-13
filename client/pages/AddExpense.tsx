@@ -77,9 +77,9 @@ function AddExpenseContent() {
     const saved = localStorage.getItem("expenses");
     const expenses: Expense[] = saved
       ? JSON.parse(saved).map((e: any) => ({
-        ...e,
-        date: new Date(e.date),
-      }))
+          ...e,
+          date: new Date(e.date),
+        }))
       : [];
 
     expenses.push(newExpense);
@@ -110,7 +110,10 @@ function AddExpenseContent() {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="bg-white rounded-xl border border-border shadow-sm p-6">
-            <Label htmlFor="description" className="text-base font-semibold text-foreground">
+            <Label
+              htmlFor="description"
+              className="text-base font-semibold text-foreground"
+            >
               What did you spend on?
             </Label>
             <p className="text-sm text-muted-foreground mt-1 mb-3">
@@ -123,17 +126,22 @@ function AddExpenseContent() {
               onChange={(e) => setDescription(e.target.value)}
               className={cn(
                 "text-base py-6",
-                errors.description && "border-destructive"
+                errors.description && "border-destructive",
               )}
             />
             {errors.description && (
-              <p className="text-sm text-destructive mt-2">{errors.description}</p>
+              <p className="text-sm text-destructive mt-2">
+                {errors.description}
+              </p>
             )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-white rounded-xl border border-border shadow-sm p-6">
-              <Label htmlFor="amount" className="text-base font-semibold text-foreground">
+              <Label
+                htmlFor="amount"
+                className="text-base font-semibold text-foreground"
+              >
                 Amount
               </Label>
               <p className="text-sm text-muted-foreground mt-1 mb-3">USD ($)</p>
@@ -151,7 +159,7 @@ function AddExpenseContent() {
                   min="0"
                   className={cn(
                     "text-base py-6 pl-8",
-                    errors.amount && "border-destructive"
+                    errors.amount && "border-destructive",
                   )}
                 />
               </div>
@@ -161,7 +169,10 @@ function AddExpenseContent() {
             </div>
 
             <div className="bg-white rounded-xl border border-border shadow-sm p-6">
-              <Label htmlFor="date" className="text-base font-semibold text-foreground">
+              <Label
+                htmlFor="date"
+                className="text-base font-semibold text-foreground"
+              >
                 Date
               </Label>
               <p className="text-sm text-muted-foreground mt-1 mb-3">
@@ -174,7 +185,7 @@ function AddExpenseContent() {
                 onChange={(e) => setDate(e.target.value)}
                 className={cn(
                   "text-base py-6",
-                  errors.date && "border-destructive"
+                  errors.date && "border-destructive",
                 )}
               />
               {errors.date && (
@@ -202,7 +213,7 @@ function AddExpenseContent() {
                     "p-3 rounded-lg border-2 transition-all font-medium text-sm capitalize flex items-center justify-center gap-2",
                     category === cat
                       ? "border-primary bg-primary/10 text-primary"
-                      : "border-border bg-white text-foreground hover:border-primary/50"
+                      : "border-border bg-white text-foreground hover:border-primary/50",
                   )}
                 >
                   <span className="text-xl">{categoryEmojis[cat]}</span>
@@ -213,7 +224,10 @@ function AddExpenseContent() {
           </div>
 
           <div className="bg-white rounded-xl border border-border shadow-sm p-6">
-            <Label htmlFor="note" className="text-base font-semibold text-foreground">
+            <Label
+              htmlFor="note"
+              className="text-base font-semibold text-foreground"
+            >
               Additional Notes (Optional)
             </Label>
             <p className="text-sm text-muted-foreground mt-1 mb-3">
@@ -236,10 +250,16 @@ function AddExpenseContent() {
                 <div className="flex items-center justify-between">
                   <span className="text-lg">{categoryEmojis[category]}</span>
                   <div className="flex-1 ml-4">
-                    <p className="font-semibold text-foreground">{description}</p>
-                    <p className="text-sm text-muted-foreground capitalize">{category}</p>
+                    <p className="font-semibold text-foreground">
+                      {description}
+                    </p>
+                    <p className="text-sm text-muted-foreground capitalize">
+                      {category}
+                    </p>
                   </div>
-                  <p className="text-2xl font-bold text-primary">${parseFloat(amount).toFixed(2)}</p>
+                  <p className="text-2xl font-bold text-primary">
+                    ${parseFloat(amount).toFixed(2)}
+                  </p>
                 </div>
               </div>
             </div>

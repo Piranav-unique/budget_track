@@ -29,7 +29,9 @@ export default function Layout({ children }: LayoutProps) {
               <Wallet className="w-6 h-6 text-primary" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-primary-foreground">MoneyTrack</h1>
+              <h1 className="text-xl font-bold text-primary-foreground">
+                MoneyTrack
+              </h1>
               <p className="text-xs text-primary-foreground/70">Budget Smart</p>
             </div>
           </Link>
@@ -47,7 +49,7 @@ export default function Layout({ children }: LayoutProps) {
                   "flex items-center gap-3 px-4 py-3 rounded-lg transition-colors",
                   isActive
                     ? "bg-primary-foreground text-primary font-semibold"
-                    : "text-primary-foreground hover:bg-primary-foreground/10"
+                    : "text-primary-foreground hover:bg-primary-foreground/10",
                 )}
               >
                 <Icon className="w-5 h-5" />
@@ -59,8 +61,12 @@ export default function Layout({ children }: LayoutProps) {
 
         <div className="p-4 border-t border-primary/20">
           <div className="bg-primary-foreground/10 rounded-lg p-4 text-center">
-            <p className="text-sm text-primary-foreground/80">Student Budget Pro</p>
-            <p className="text-xs text-primary-foreground/60 mt-1">Master your money</p>
+            <p className="text-sm text-primary-foreground/80">
+              Student Budget Pro
+            </p>
+            <p className="text-xs text-primary-foreground/60 mt-1">
+              Master your money
+            </p>
           </div>
         </div>
       </div>
@@ -81,7 +87,10 @@ export default function Layout({ children }: LayoutProps) {
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden fixed inset-0 z-40 top-16 bg-black/50" onClick={() => setMobileMenuOpen(false)}>
+        <div
+          className="md:hidden fixed inset-0 z-40 top-16 bg-black/50"
+          onClick={() => setMobileMenuOpen(false)}
+        >
           <div className="bg-white w-full shadow-lg">
             <nav className="p-4 space-y-2">
               {navItems.map((item) => {
@@ -96,7 +105,7 @@ export default function Layout({ children }: LayoutProps) {
                       "flex items-center gap-3 px-4 py-3 rounded-lg transition-colors",
                       isActive
                         ? "bg-primary text-primary-foreground font-semibold"
-                        : "text-foreground hover:bg-secondary/10"
+                        : "text-foreground hover:bg-secondary/10",
                     )}
                   >
                     <Icon className="w-5 h-5" />
@@ -111,9 +120,7 @@ export default function Layout({ children }: LayoutProps) {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        <main className="flex-1 overflow-auto pt-16 md:pt-0">
-          {children}
-        </main>
+        <main className="flex-1 overflow-auto pt-16 md:pt-0">{children}</main>
       </div>
     </div>
   );

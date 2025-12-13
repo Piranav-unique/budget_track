@@ -24,7 +24,8 @@ const NotFound = () => {
           <h1 className="text-4xl font-bold text-foreground mb-2">404</h1>
           <p className="text-xl text-muted-foreground mb-2">Page not found</p>
           <p className="text-sm text-muted-foreground mb-6">
-            Sorry, the page you're looking for doesn't exist. Let's get you back on track!
+            Sorry, the page you're looking for doesn't exist. Let's get you back
+            on track!
           </p>
           <Link to="/">
             <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">

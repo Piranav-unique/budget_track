@@ -306,3 +306,11 @@ function BudgetSettingsContent() {
     </div>
   );
 }
+
+export default function BudgetSettings() {
+  return (
+    <Layout>
+      <BudgetSettingsContent />
+    </Layout>
+  );
+}

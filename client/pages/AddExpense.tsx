@@ -91,7 +91,6 @@ function AddExpenseContent() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 p-4 md:p-8">
       <div className="max-w-2xl mx-auto">
-        {/* Header */}
         <button
           onClick={() => navigate(-1)}
           className="flex items-center gap-2 text-primary hover:text-primary/80 font-medium mb-6 transition-colors"
@@ -110,7 +109,6 @@ function AddExpenseContent() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Description */}
           <div className="bg-white rounded-xl border border-border shadow-sm p-6">
             <Label htmlFor="description" className="text-base font-semibold text-foreground">
               What did you spend on?
@@ -133,7 +131,6 @@ function AddExpenseContent() {
             )}
           </div>
 
-          {/* Amount & Date */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-white rounded-xl border border-border shadow-sm p-6">
               <Label htmlFor="amount" className="text-base font-semibold text-foreground">
@@ -186,7 +183,6 @@ function AddExpenseContent() {
             </div>
           </div>
 
-          {/* Category Selection */}
           <div className="bg-white rounded-xl border border-border shadow-sm p-6">
             <Label className="text-base font-semibold text-foreground">
               Category
@@ -216,7 +212,6 @@ function AddExpenseContent() {
             </div>
           </div>
 
-          {/* Note */}
           <div className="bg-white rounded-xl border border-border shadow-sm p-6">
             <Label htmlFor="note" className="text-base font-semibold text-foreground">
               Additional Notes (Optional)
@@ -234,7 +229,6 @@ function AddExpenseContent() {
             />
           </div>
 
-          {/* Summary Preview */}
           {description && amount && (
             <div className="bg-gradient-to-br from-primary/10 to-secondary/10 rounded-xl border border-primary/20 p-6">
               <p className="text-sm text-muted-foreground mb-3">Summary</p>
@@ -251,7 +245,6 @@ function AddExpenseContent() {
             </div>
           )}
 
-          {/* Submit Button */}
           <div className="flex gap-3 pt-4">
             <Button
               type="button"
@@ -274,6 +267,10 @@ function AddExpenseContent() {
   );
 }
 
-function cn(...classes: (string | boolean | undefined)[]) {
-  return classes.filter(Boolean).join(" ");
+export default function AddExpense() {
+  return (
+    <Layout>
+      <AddExpenseContent />
+    </Layout>
+  );
 }

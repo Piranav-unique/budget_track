@@ -6,8 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Budget } from "@/lib/expenses";
 import { cn } from "@/lib/utils";
+import Layout from "@/components/Layout";
 
-export default function BudgetSettings() {
+function BudgetSettingsContent() {
   const navigate = useNavigate();
   const [budget, setBudget] = useState<Budget>({
     monthly: 2000,

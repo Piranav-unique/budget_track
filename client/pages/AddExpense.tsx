@@ -5,12 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
+import Layout from "@/components/Layout";
 import {
   Expense,
   ExpenseCategory,
   categorizeExpense,
   categoryEmojis,
-  categoryColors,
 } from "@/lib/expenses";
 
 const categories: ExpenseCategory[] = [
@@ -24,7 +25,7 @@ const categories: ExpenseCategory[] = [
   "other",
 ];
 
-export default function AddExpense() {
+function AddExpenseContent() {
   const navigate = useNavigate();
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");

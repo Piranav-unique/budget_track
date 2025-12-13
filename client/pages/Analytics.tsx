@@ -332,3 +332,11 @@ function AnalyticsContent() {
     </div>
   );
 }
+
+export default function Analytics() {
+  return (
+    <Layout>
+      <AnalyticsContent />
+    </Layout>
+  );
+}

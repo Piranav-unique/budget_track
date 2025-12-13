@@ -42,3 +42,11 @@ function SettingsContent() {
     </div>
   );
 }
+
+export default function Settings() {
+  return (
+    <Layout>
+      <SettingsContent />
+    </Layout>
+  );
+}

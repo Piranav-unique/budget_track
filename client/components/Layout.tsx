@@ -1,0 +1,120 @@
+import { Link, useLocation } from "react-router-dom";
+import { useState } from "react";
+import { Menu, X, Wallet, BarChart3, Settings, Plus, Home } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+interface LayoutProps {
+  children: React.ReactNode;
+}
+
+export default function Layout({ children }: LayoutProps) {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const location = useLocation();
+
+  const navItems = [
+    { path: "/", label: "Dashboard", icon: Home },
+    { path: "/add-expense", label: "Add Expense", icon: Plus },
+    { path: "/budget", label: "Budget", icon: Wallet },
+    { path: "/analytics", label: "Analytics", icon: BarChart3 },
+    { path: "/settings", label: "Settings", icon: Settings },
+  ];
+
+  return (
+    <div className="flex h-screen bg-background">
+      {/* Sidebar */}
+      <div className="hidden md:flex md:w-64 bg-primary flex-col">
+        <div className="p-6 border-b border-primary/20">
+          <Link to="/" className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-primary-foreground rounded-lg flex items-center justify-center">
+              <Wallet className="w-6 h-6 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-primary-foreground">MoneyTrack</h1>
+              <p className="text-xs text-primary-foreground/70">Budget Smart</p>
+            </div>
+          </Link>
+        </div>
+
+        <nav className="flex-1 px-4 py-6 space-y-2">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = location.pathname === item.path;
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={cn(
+                  "flex items-center gap-3 px-4 py-3 rounded-lg transition-colors",
+                  isActive
+                    ? "bg-primary-foreground text-primary font-semibold"
+                    : "text-primary-foreground hover:bg-primary-foreground/10"
+                )}
+              >
+                <Icon className="w-5 h-5" />
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div className="p-4 border-t border-primary/20">
+          <div className="bg-primary-foreground/10 rounded-lg p-4 text-center">
+            <p className="text-sm text-primary-foreground/80">Student Budget Pro</p>
+            <p className="text-xs text-primary-foreground/60 mt-1">Master your money</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile Header */}
+      <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-primary text-primary-foreground p-4 flex items-center justify-between">
+        <Link to="/" className="flex items-center gap-2">
+          <Wallet className="w-6 h-6" />
+          <span className="font-bold">MoneyTrack</span>
+        </Link>
+        <button
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="p-2"
+        >
+          {mobileMenuOpen ? <X /> : <Menu />}
+        </button>
+      </div>
+
+      {/* Mobile Menu */}
+      {mobileMenuOpen && (
+        <div className="md:hidden fixed inset-0 z-40 top-16 bg-black/50" onClick={() => setMobileMenuOpen(false)}>
+          <div className="bg-white w-full shadow-lg">
+            <nav className="p-4 space-y-2">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = location.pathname === item.path;
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={cn(
+                      "flex items-center gap-3 px-4 py-3 rounded-lg transition-colors",
+                      isActive
+                        ? "bg-primary text-primary-foreground font-semibold"
+                        : "text-foreground hover:bg-secondary/10"
+                    )}
+                  >
+                    <Icon className="w-5 h-5" />
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+        </div>
+      )}
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <main className="flex-1 overflow-auto pt-16 md:pt-0">
+          {children}
+        </main>
+      </div>
+    </div>
+  );
+}

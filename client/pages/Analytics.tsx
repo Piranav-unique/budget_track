@@ -203,13 +203,13 @@ function AnalyticsContent() {
                     <XAxis dataKey="date" stroke="#6b7280" />
                     <YAxis stroke="#6b7280" />
                     <Tooltip
-                      contentStyle={{
-                        backgroundColor: "#fff",
-                        border: "1px solid #e5e7eb",
-                        borderRadius: "0.75rem",
-                      }}
-                      formatter={(value) => `$${value.toFixed(2)}`}
-                    />
+                    contentStyle={{
+                      backgroundColor: "#fff",
+                      border: "1px solid #e5e7eb",
+                      borderRadius: "0.75rem",
+                    }}
+                    formatter={(value) => `$${typeof value === 'number' ? value.toFixed(2) : value}`}
+                  />
                     <Line
                       type="monotone"
                       dataKey="amount"
@@ -239,7 +239,7 @@ function AnalyticsContent() {
                       border: "1px solid #e5e7eb",
                       borderRadius: "0.75rem",
                     }}
-                    formatter={(value) => `$${value.toFixed(2)}`}
+                    formatter={(value) => `$${typeof value === 'number' ? value.toFixed(2) : value}`}
                   />
                   <Legend />
                   <Bar dataKey="budget" fill="#10b981" name="Weekly Budget" />

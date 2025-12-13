@@ -16,6 +16,7 @@ import {
   Line,
 } from "recharts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import Layout from "@/components/Layout";
 import {
   Expense,
   Budget,
@@ -25,7 +26,7 @@ import {
   getUnnecessaryExpenses,
 } from "@/lib/expenses";
 
-export default function Analytics() {
+function AnalyticsContent() {
   const navigate = useNavigate();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [budget, setBudget] = useState<Budget>({

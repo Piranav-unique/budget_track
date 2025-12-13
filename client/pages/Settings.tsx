@@ -1,8 +1,9 @@
 import { Link } from "react-router-dom";
 import { ChevronLeft, Lightbulb } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import Layout from "@/components/Layout";
 
-export default function Settings() {
+function SettingsContent() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 p-4 md:p-8">
       <div className="max-w-3xl mx-auto">

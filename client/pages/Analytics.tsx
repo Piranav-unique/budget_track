@@ -1,33 +1,60 @@
-import { useState, useEffect } from "react";
-import { ChevronLeft, TrendingDown, AlertTriangle } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  PieChart,
-  Pie,
-  BarChart,
+  Activity,
+  AlertTriangle,
+  BarChart3,
+  Calendar,
+  ChevronLeft,
+  DollarSign,
+  PieChart as PieChartIcon,
+  TrendingUp,
+  TrendingDown,
+  ArrowUp,
+  ArrowDown,
+  Sparkles,
+  Target,
+} from "lucide-react";
+import {
   Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  LineChart,
-  Line,
 } from "recharts";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 import Layout from "@/components/Layout";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 import {
-  Expense,
   Budget,
-  getSpentByCategory,
+  Expense,
   categoryBgCharts,
   categoryEmojis,
+  getSpentByCategory,
   getUnnecessaryExpenses,
 } from "@/lib/expenses";
 
-function AnalyticsContent() {
+// ---------------- helpers ----------------
+const cleanValue = (val?: string | null) => {
+  if (!val) return "";
+  return val.replace(/^"+|"+$/g, "").trim();
+};
+
+// ---------------- content component ----------------
+const AnalyticsContent: React.FC = () => {
   const navigate = useNavigate();
+
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [budget, setBudget] = useState<Budget>({
     monthly: 2000,
@@ -35,375 +62,405 @@ function AnalyticsContent() {
     savingsGoal: 500,
   });
 
-  useEffect(() => {
-    const saved = localStorage.getItem("expenses");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved).map((e: any) => ({
-          ...e,
-          date: new Date(e.date),
-        }));
-        setExpenses(parsed);
-      } catch (e) {
-        console.error("Error loading expenses:", e);
-      }
+  // ---------- fetch data ----------
+  const fetchExpenses = async () => {
+    try {
+      const res = await fetch("/api/expenses");
+      if (!res.ok) throw new Error("Failed to load expenses");
+
+      const data = await res.json();
+      const parsed: Expense[] = data.map((e: any) => {
+        const rawDate = cleanValue(e.date ?? e.createdAt);
+        const rawCategory = cleanValue(e.category);
+        const rawDescription = cleanValue(e.description);
+
+        return {
+          id:
+            (typeof e._id === "object" && e._id.toString()) ||
+            (typeof e._id === "string" && e._id) ||
+            e.id ||
+            `${rawDescription}-${rawDate}`,
+          description: rawDescription,
+          amount: Number(cleanValue(String(e.amount ?? 0))),
+          category: (rawCategory?.toLowerCase() ?? "other") as any,
+          note: e.note ?? undefined,
+          date: new Date(rawDate || Date.now()),
+        };
+      });
+
+      parsed.sort((a, b) => b.date.getTime() - a.date.getTime());
+      setExpenses(parsed);
+    } catch (err) {
+      console.error("Error loading expenses:", err);
     }
+  };
+
+  useEffect(() => {
+    fetchExpenses();
 
     const savedBudget = localStorage.getItem("budget");
     if (savedBudget) {
       try {
         setBudget(JSON.parse(savedBudget));
-      } catch (e) {
-        console.error("Error loading budget:", e);
+      } catch (err) {
+        console.error("Error loading budget:", err);
       }
     }
   }, []);
 
+  // ---------- date ranges ----------
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
-  // Category breakdown
+  // ---------- analytics ----------
   const categorySpending = getSpentByCategory(expenses, monthStart, monthEnd);
+  
+  // Calculate total spending first
+  const totalSpending = expenses
+    .filter((e) => e.date >= monthStart && e.date <= monthEnd)
+    .reduce((sum, e) => sum + e.amount, 0);
+
+  // Then calculate pie data with totalSpending available
   const pieData = Object.entries(categorySpending)
     .filter(([, amount]) => amount > 0)
-    .map(([category, amount]) => ({
-      name: category,
-      value: parseFloat(amount.toFixed(2)),
-      fill: categoryBgCharts[category as any],
-    }));
+    .map(([category, amount]) => {
+      const percentage = totalSpending > 0 ? (amount / totalSpending) * 100 : 0;
+      return {
+        name: category,
+        value: Number(amount.toFixed(2)),
+        fill: categoryBgCharts[category as any],
+        percentage: Math.round(percentage * 100) / 100,
+      };
+    })
+    .sort((a, b) => b.value - a.value);
 
-  // Daily spending trend
   const dailySpending: Record<string, number> = {};
   expenses
-    .filter((exp) => exp.date >= monthStart && exp.date <= monthEnd)
-    .forEach((exp) => {
-      const day = exp.date.toLocaleDateString();
-      dailySpending[day] = (dailySpending[day] || 0) + exp.amount;
+    .filter((e) => e.date >= monthStart && e.date <= monthEnd)
+    .forEach((e) => {
+      const key = e.date.toLocaleDateString();
+      dailySpending[key] = (dailySpending[key] || 0) + e.amount;
     });
 
   const trendData = Object.entries(dailySpending)
-    .sort(
-      ([dateA], [dateB]) =>
-        new Date(dateA).getTime() - new Date(dateB).getTime(),
-    )
+    .sort(([a], [b]) => new Date(a).getTime() - new Date(b).getTime())
     .map(([date, amount]) => ({
       date: new Date(date).toLocaleDateString("en-US", {
         month: "short",
         day: "numeric",
       }),
-      amount: parseFloat(amount.toFixed(2)),
+      amount: Number(amount.toFixed(2)),
     }))
-    .slice(-30); // Last 30 days
+    .slice(-30);
 
-  // Weekly comparison
-  const weeklyData = [];
+  const weeklyData = [] as any[];
   for (let i = 4; i >= 0; i--) {
-    const weekEnd = new Date();
-    weekEnd.setDate(weekEnd.getDate() - i * 7);
-    const weekStart = new Date(weekEnd);
-    weekStart.setDate(weekEnd.getDate() - 6);
+    const end = new Date();
+    end.setDate(end.getDate() - i * 7);
+    const start = new Date(end);
+    start.setDate(end.getDate() - 6);
 
-    let weekTotal = 0;
-    expenses.forEach((exp) => {
-      if (exp.date >= weekStart && exp.date <= weekEnd) {
-        weekTotal += exp.amount;
-      }
+    let total = 0;
+    expenses.forEach((e) => {
+      if (e.date >= start && e.date <= end) total += e.amount;
     });
 
     weeklyData.push({
       week: `Week ${5 - i}`,
-      spent: parseFloat(weekTotal.toFixed(2)),
+      spent: Number(total.toFixed(2)),
       budget: budget.weekly,
     });
   }
 
-  // Unnecessary expenses
   const unnecessaryExpenses = getUnnecessaryExpenses(
     expenses,
     monthStart,
     monthEnd,
   );
 
+  // totalSpending is now calculated above
+    
+  const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+  const prevMonthSpending = expenses
+    .filter((e) => e.date >= prevMonthStart && e.date <= prevMonthEnd)
+    .reduce((sum, e) => sum + e.amount, 0);
+    
+  const spendingChange = prevMonthSpending 
+    ? ((totalSpending - prevMonthSpending) / prevMonthSpending) * 100 
+    : 0;
+    
+  const avgTransaction = expenses.length > 0 
+    ? totalSpending / expenses.length 
+    : 0;
+    
+  const topCategory = pieData.length ? pieData[0] : null;
+  const secondCategory = pieData.length > 1 ? pieData[1] : null;
+
+  // ---------------- render ----------------
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <button
-          onClick={() => navigate(-1)}
-          className="flex items-center gap-2 text-primary hover:text-primary/80 font-medium mb-6 transition-colors"
-        >
-          <ChevronLeft className="w-5 h-5" />
-          Back
-        </button>
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+      <div className="relative z-10 p-4 md:p-8">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-8">
+            <button
+              onClick={() => navigate(-1)}
+              className="flex items-center gap-2 text-indigo-600 hover:text-indigo-700 font-medium"
+            >
+              <ChevronLeft className="w-5 h-5" /> Back
+            </button>
+          </div>
 
-        <div className="mb-8">
-          <h1 className="text-3xl md:text-4xl font-bold text-foreground">
-            Financial Analytics
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            Analyze your spending patterns and get insights
-          </p>
-        </div>
+          {/* Title */}
+          <div className="text-center mb-10">
+            <h1 className="text-4xl md:text-5xl font-extrabold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+              Financial Analytics
+            </h1>
+          </div>
 
-        <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full max-w-2xl grid-cols-3">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="trends">Trends</TabsTrigger>
-            <TabsTrigger value="insights">Insights</TabsTrigger>
-          </TabsList>
-
-          {/* Overview Tab */}
-          <TabsContent value="overview" className="space-y-6">
-            {/* Category Breakdown */}
-            <div className="bg-white rounded-xl border border-border shadow-sm p-6">
-              <h2 className="text-xl font-bold text-foreground mb-6">
-                Spending by Category
-              </h2>
-              {pieData.length > 0 ? (
-                <div className="flex flex-col md:flex-row items-center justify-center gap-8">
-                  <ResponsiveContainer width="100%" height={300}>
-                    <PieChart>
-                      <Pie
-                        data={pieData}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ name, value, percent }) =>
-                          `${name}: $${value} (${(percent * 100).toFixed(0)}%)`
-                        }
-                        outerRadius={100}
-                        fill="#8884d8"
-                        dataKey="value"
-                      ></Pie>
-                      <Tooltip
-                        formatter={(value) =>
-                          `$${typeof value === "number" ? value.toFixed(2) : value}`
-                        }
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-
-                  {/* Category List */}
-                  <div className="space-y-3 w-full md:w-auto">
-                    {pieData.map((item) => (
-                      <div key={item.name} className="flex items-center gap-3">
-                        <div
-                          className="w-4 h-4 rounded"
-                          style={{ backgroundColor: item.fill }}
-                        />
-                        <span className="text-sm font-medium text-foreground capitalize">
-                          {item.name}
-                        </span>
-                        <span className="text-sm text-muted-foreground ml-auto">
-                          ${item.value.toFixed(2)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+          {/* Quick Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
+            <Card className="bg-gradient-to-br from-indigo-50 to-indigo-100">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-2">
+                  <DollarSign className="text-indigo-600" />
+                  <span className={`text-sm font-medium ${spendingChange >= 0 ? 'text-red-500' : 'text-green-500'}`}>
+                    {spendingChange > 0 ? (
+                      <span className="flex items-center">
+                        <ArrowUp className="w-4 h-4 mr-1" />
+                        {Math.abs(spendingChange).toFixed(1)}%
+                      </span>
+                    ) : (
+                      <span className="flex items-center">
+                        <ArrowDown className="w-4 h-4 mr-1" />
+                        {Math.abs(spendingChange).toFixed(1)}%
+                      </span>
+                    )}
+                  </span>
                 </div>
-              ) : (
-                <p className="text-center text-muted-foreground py-8">
-                  No spending data yet
+                <p className="text-sm text-gray-500 mb-1">Total Spending</p>
+                <p className="text-2xl font-bold">₹{totalSpending.toFixed(2)}</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {spendingChange >= 0 ? 'Up' : 'Down'} from last month
                 </p>
-              )}
-            </div>
-          </TabsContent>
+              </CardContent>
+            </Card>
 
-          {/* Trends Tab */}
-          <TabsContent value="trends" className="space-y-6">
-            {/* Daily Spending Trend */}
-            <div className="bg-white rounded-xl border border-border shadow-sm p-6">
-              <h2 className="text-xl font-bold text-foreground mb-6">
-                Daily Spending Trend
-              </h2>
-              {trendData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart
-                    data={trendData}
-                    margin={{ top: 5, right: 30, left: 0, bottom: 5 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                    <XAxis dataKey="date" stroke="#6b7280" />
-                    <YAxis stroke="#6b7280" />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "#fff",
-                        border: "1px solid #e5e7eb",
-                        borderRadius: "0.75rem",
-                      }}
-                      formatter={(value) =>
-                        `$${typeof value === "number" ? value.toFixed(2) : value}`
-                      }
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="amount"
-                      stroke="#3b82f6"
-                      strokeWidth={2}
-                      dot={{ fill: "#3b82f6", r: 4 }}
-                      activeDot={{ r: 6 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              ) : (
-                <p className="text-center text-muted-foreground py-8">
-                  No spending data yet
+            <Card className="bg-gradient-to-br from-purple-50 to-purple-100">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-2">
+                  <Target className="text-purple-600" />
+                  {topCategory && (
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: topCategory.fill }} />
+                  )}
+                </div>
+                <p className="text-sm text-gray-500 mb-1">Top Category</p>
+                <p className="text-2xl font-bold capitalize">
+                  {topCategory?.name || "None"}
                 </p>
-              )}
-            </div>
+                {topCategory && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    {topCategory.percentage}% of total spending
+                  </p>
+                )}
+              </CardContent>
+            </Card>
 
-            {/* Weekly Comparison */}
-            <div className="bg-white rounded-xl border border-border shadow-sm p-6">
-              <h2 className="text-xl font-bold text-foreground mb-6">
-                Weekly Budget vs Actual
-              </h2>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart
-                  data={weeklyData}
-                  margin={{ top: 5, right: 30, left: 0, bottom: 5 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis dataKey="week" stroke="#6b7280" />
-                  <YAxis stroke="#6b7280" />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "#fff",
-                      border: "1px solid #e5e7eb",
-                      borderRadius: "0.75rem",
-                    }}
-                    formatter={(value) =>
-                      `$${typeof value === "number" ? value.toFixed(2) : value}`
-                    }
-                  />
-                  <Legend />
-                  <Bar dataKey="budget" fill="#10b981" name="Weekly Budget" />
-                  <Bar dataKey="spent" fill="#3b82f6" name="Actual Spending" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </TabsContent>
+            <Card className="bg-gradient-to-br from-blue-50 to-blue-100">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-2">
+                  <Activity className="text-blue-600" />
+                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                    {expenses.length} {expenses.length === 1 ? 'txn' : 'txns'}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-500 mb-1">Avg. Transaction</p>
+                <p className="text-2xl font-bold">₹{avgTransaction.toFixed(2)}</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {expenses.length} transactions this month
+                </p>
+              </CardContent>
+            </Card>
 
-          {/* Insights Tab */}
-          <TabsContent value="insights" className="space-y-6">
-            {/* High-Value Expenses */}
-            <div className="bg-white rounded-xl border border-border shadow-sm p-6">
-              <div className="flex items-center gap-2 mb-6">
-                <AlertTriangle className="w-5 h-5 text-amber-500" />
-                <h2 className="text-xl font-bold text-foreground">
-                  High-Value Transactions
-                </h2>
-              </div>
-              {unnecessaryExpenses.length > 0 ? (
-                <div className="space-y-3">
-                  {unnecessaryExpenses.slice(0, 10).map((expense) => (
-                    <div
-                      key={expense.id}
-                      className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-lg transition-colors"
-                    >
-                      <div className="flex items-center gap-3 flex-1">
-                        <span className="text-2xl">
-                          {categoryEmojis[expense.category]}
-                        </span>
-                        <div className="flex-1">
-                          <p className="font-medium text-foreground">
-                            {expense.description}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {expense.date.toLocaleDateString()} •{" "}
-                            <span className="capitalize">
-                              {expense.category}
-                            </span>
+            <Card className="bg-gradient-to-br from-green-50 to-green-100">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-2">
+                  <TrendingDown className="text-green-600" />
+                  {secondCategory && (
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: secondCategory.fill }} />
+                  )}
+                </div>
+                <p className="text-sm text-gray-500 mb-1">Budget Status</p>
+                <p className="text-2xl font-bold">
+                  {budget.monthly > 0 ? `₹${(budget.monthly - totalSpending).toFixed(2)}` : 'N/A'}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {budget.monthly > 0 ? `Left of ₹${budget.monthly} budget` : 'Monthly budget not set'}
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Tabs */}
+          <Tabs defaultValue="overview">
+            <TabsList className="grid grid-cols-3 max-w-xl mx-auto">
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="trends">Trends</TabsTrigger>
+              <TabsTrigger value="insights">Insights</TabsTrigger>
+            </TabsList>
+
+            {/* Overview */}
+            <TabsContent value="overview">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Spending by Category</CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-col items-center">
+                  {pieData.length ? (
+                    <div className="w-full flex flex-col md:flex-row items-center justify-between gap-8">
+                      <div className="w-full md:w-1/2 h-80">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie 
+                              data={pieData} 
+                              dataKey="value"
+                              nameKey="name"
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={60}
+                              outerRadius={100}
+                              paddingAngle={3}
+                              label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                              labelLine={true}
+                              labelLineLength={20}
+                              labelLineWidth={2}
+                              labelLineStroke="#666"
+                              labelStyle={{
+                                fontSize: '12px',
+                                fill: '#374151',
+                                fontWeight: 500,
+                                textShadow: '0 0 4px white',
+                              }}
+                            >
+                              {pieData.map((e, i) => (
+                                <Cell 
+                                  key={`cell-${i}`} 
+                                  fill={e.fill} 
+                                  stroke="#fff" 
+                                  strokeWidth={1}
+                                />
+                              ))}
+                            </Pie>
+                            <Tooltip 
+                              formatter={(value: number, name: string, props: any) => [
+                                `₹${value.toFixed(2)}`,
+                                name,
+                                `${props.payload.percentage}% of total`
+                              ]}
+                              contentStyle={{
+                                borderRadius: '8px',
+                                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                                border: '1px solid #e5e7eb',
+                                padding: '8px 12px',
+                                backgroundColor: 'white',
+                              }}
+                            />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </div>
+                      <div className="w-full md:w-1/2">
+                        <h3 className="font-medium text-gray-700 text-lg mb-4">Spending Breakdown</h3>
+                        <div className="space-y-3 max-h-64 overflow-y-auto pr-2">
+                          {pieData.map((item, index) => (
+                            <div 
+                              key={index} 
+                              className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 transition-colors"
+                            >
+                              <div className="flex items-center flex-1 min-w-0">
+                                <div 
+                                  className="w-4 h-4 rounded-full flex-shrink-0 mr-3" 
+                                  style={{ backgroundColor: item.fill }}
+                                />
+                                <span className="text-sm font-medium truncate">
+                                  {item.name.charAt(0).toUpperCase() + item.name.slice(1)}
+                                </span>
+                              </div>
+                              <div className="flex items-center ml-4">
+                                <span className="text-sm font-medium whitespace-nowrap">
+                                  ₹{item.value.toFixed(2)}
+                                </span>
+                                <span className="text-xs text-gray-500 ml-2 w-12 text-right">
+                                  ({item.percentage}%)
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                          <p className="text-sm text-blue-800">
+                            <span className="font-semibold">Total:</span> ₹{totalSpending.toFixed(2)}
                           </p>
                         </div>
                       </div>
-                      <p className="font-bold text-primary text-lg">
-                        ${expense.amount.toFixed(2)}
-                      </p>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-center text-muted-foreground py-8">
-                  No high-value expenses yet
-                </p>
-              )}
-            </div>
+                  ) : (
+                    <div className="h-64 flex items-center justify-center">
+                      <p className="text-gray-500">No spending data available</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-            {/* Spending Insights */}
-            <div className="bg-gradient-to-br from-primary/5 to-secondary/5 rounded-xl border border-primary/20 p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <TrendingDown className="w-5 h-5 text-primary" />
-                <h2 className="text-xl font-bold text-foreground">
-                  Spending Insights
-                </h2>
-              </div>
-              <div className="space-y-3 text-sm text-foreground">
-                {pieData.length > 0 ? (
-                  <>
-                    {(() => {
-                      const totalSpending = pieData.reduce(
-                        (sum, item) => sum + item.value,
-                        0,
-                      );
-                      const topCategory = pieData.reduce((max, item) =>
-                        item.value > max.value ? item : max,
-                      );
-                      const avgTransaction =
-                        expenses
-                          .filter(
-                            (exp) =>
-                              exp.date >= monthStart && exp.date <= monthEnd,
-                          )
-                          .reduce((sum, exp) => sum + exp.amount, 0) /
-                          expenses.filter(
-                            (exp) =>
-                              exp.date >= monthStart && exp.date <= monthEnd,
-                          ).length || 0;
+            {/* Trends */}
+            <TabsContent value="trends">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Daily Spending</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={trendData}>
+                      <XAxis dataKey="date" />
+                      <YAxis />
+                      <Tooltip />
+                      <Line dataKey="amount" stroke="#3b82f6" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-                      return (
-                        <>
-                          <p>
-                            • Your top spending category is{" "}
-                            <span className="font-bold capitalize">
-                              {topCategory.name}
-                            </span>{" "}
-                            at ${topCategory.value.toFixed(2)} (
-                            {(
-                              (topCategory.value / totalSpending) *
-                              100
-                            ).toFixed(0)}
-                            %)
-                          </p>
-                          <p>
-                            • Your total spending this month is $
-                            {totalSpending.toFixed(2)} out of $
-                            {budget.monthly.toFixed(2)} budget
-                          </p>
-                          <p>
-                            • Average transaction: ${avgTransaction.toFixed(2)}
-                          </p>
-                          <p>
-                            • You have $
-                            {(budget.monthly - totalSpending).toFixed(2)} left
-                            in your monthly budget
-                          </p>
-                        </>
-                      );
-                    })()}
-                  </>
-                ) : (
-                  <p>Start tracking expenses to see insights</p>
-                )}
-              </div>
-            </div>
-          </TabsContent>
-        </Tabs>
+            {/* Insights */}
+            <TabsContent value="insights">
+              <Card>
+                <CardHeader>
+                  <CardTitle>High-Value Expenses</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {unnecessaryExpenses.length ? (
+                    unnecessaryExpenses.slice(0, 5).map((e) => (
+                      <div key={e.id} className="flex justify-between">
+                        <span>{e.description}</span>
+                        <span className="font-bold">₹{e.amount}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <p>No high-value expenses</p>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </div>
       </div>
     </div>
   );
-}
+};
 
+// ---------------- page wrapper ----------------
 export default function Analytics() {
   return (
     <Layout>

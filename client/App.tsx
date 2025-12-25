@@ -11,6 +11,8 @@ import AddExpense from "./pages/AddExpense";
 import BudgetSettings from "./pages/BudgetSettings";
 import Analytics from "./pages/Analytics";
 import Settings from "./pages/Settings";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -23,6 +25,9 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/dashboard" element={<Index />} />
           <Route path="/add-expense" element={<AddExpense />} />
           <Route path="/budget" element={<BudgetSettings />} />
           <Route path="/analytics" element={<Analytics />} />

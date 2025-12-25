@@ -138,7 +138,7 @@ function BudgetSettingsContent() {
               </Label>
               <div className="relative">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground text-lg">
-                  $
+                  ₹
                 </span>
                 <Input
                   id="monthly"
@@ -169,7 +169,7 @@ function BudgetSettingsContent() {
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Weekly</p>
                   <p className="text-lg font-bold text-primary">
-                    ${(budget.monthly / 4).toFixed(2)}
+                    ₹{(budget.monthly / 4).toFixed(2)}
                   </p>
                 </div>
                 <div>
@@ -177,13 +177,13 @@ function BudgetSettingsContent() {
                     Bi-weekly
                   </p>
                   <p className="text-lg font-bold text-primary">
-                    ${(budget.monthly / 2).toFixed(2)}
+                    ₹{(budget.monthly / 2).toFixed(2)}
                   </p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Daily</p>
                   <p className="text-lg font-bold text-primary">
-                    ${(budget.monthly / 30).toFixed(2)}
+                    ₹{(budget.monthly / 30).toFixed(2)}
                   </p>
                 </div>
               </div>
@@ -215,7 +215,7 @@ function BudgetSettingsContent() {
               </Label>
               <div className="relative">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground text-lg">
-                  $
+                  ₹
                 </span>
                 <Input
                   id="weekly"
@@ -241,10 +241,10 @@ function BudgetSettingsContent() {
                 Monthly equivalent:
               </p>
               <p className="text-lg font-bold text-secondary">
-                ${(budget.weekly * 4.33).toFixed(2)}
+                ₹{(budget.weekly * 4.33).toFixed(2)}
               </p>
               <p className="text-xs text-muted-foreground mt-2">
-                (Your monthly budget is ${budget.monthly.toFixed(2)})
+                (Your monthly budget is ₹{budget.monthly.toFixed(2)})
               </p>
             </div>
           </div>
@@ -274,7 +274,7 @@ function BudgetSettingsContent() {
               </Label>
               <div className="relative">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground text-lg">
-                  $
+                  ₹
                 </span>
                 <Input
                   id="savingsGoal"
@@ -303,7 +303,7 @@ function BudgetSettingsContent() {
                   Monthly savings target:
                 </p>
                 <p className="text-lg font-bold text-accent">
-                  ${budget.savingsGoal.toFixed(2)}
+                  ₹{budget.savingsGoal.toFixed(2)}
                 </p>
               </div>
               <div>
@@ -311,12 +311,12 @@ function BudgetSettingsContent() {
                   Yearly savings projection:
                 </p>
                 <p className="text-lg font-bold text-accent">
-                  ${(budget.savingsGoal * 12).toFixed(2)}
+                  ₹{(budget.savingsGoal * 12).toFixed(2)}
                 </p>
               </div>
               <div className="pt-2 border-t border-border">
                 <p className="text-xs text-muted-foreground">
-                  You'll need to spend $
+                  You'll need to spend ₹
                   {(budget.monthly - budget.savingsGoal).toFixed(2)} or less
                   each month to reach this goal.
                 </p>

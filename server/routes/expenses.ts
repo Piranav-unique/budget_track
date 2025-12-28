@@ -76,14 +76,42 @@ export const handleCreateExpense: RequestHandler = async (req, res) => {
 
 export const handleListExpenses: RequestHandler = async (_req, res) => {
   try {
+    // Check if database connection is available
+    if (!process.env.DATABASE_URL) {
+      console.error("DATABASE_URL is missing");
+      return res.status(500).json({
+        error: "Database configuration missing",
+        details: "DATABASE_URL environment variable is not set"
+      });
+    }
+
+    // Test database connection
+    try {
+      await pool.query("SELECT 1");
+    } catch (dbError) {
+      console.error("Database connection test failed:", dbError);
+      return res.status(500).json({
+        error: "Database connection failed",
+        details: dbError instanceof Error ? dbError.message : "Unknown database error"
+      });
+    }
+
+    console.log("Fetching expenses from database...");
     const result = await pool.query(
       "SELECT * FROM expenses ORDER BY date DESC LIMIT 200"
     );
-
+    console.log(`Successfully fetched ${result.rows.length} expenses.`);
     return res.status(200).json(result.rows);
   } catch (error) {
-    console.error("List expenses error:", error);
-    return res.status(500).json({ error: "Failed to load expenses" });
+    console.error("List expenses error:", {
+      message: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack : undefined,
+      dbUrl: process.env.DATABASE_URL ? "Present (masked)" : "MISSING"
+    });
+    return res.status(500).json({
+      error: "Failed to load expenses",
+      details: error instanceof Error ? error.message : "Unknown error"
+    });
   }
 };
 

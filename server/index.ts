@@ -36,7 +36,27 @@ export function createServer() {
   app.post("/api/ai-insights/quick", handleGetQuickInsight);
 
   // Initialize DB tables
-  initDb().catch(console.error);
+  initDb().catch((error) => {
+    console.error("Failed to initialize database:", error);
+    console.error("The application will continue but database operations may fail.");
+  });
+
+  // Error handling middleware
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    console.error("Unhandled error:", {
+      message: err instanceof Error ? err.message : "Unknown error",
+      stack: err instanceof Error ? err.stack : undefined,
+      path: req.path,
+      method: req.method
+    });
+    
+    if (!res.headersSent) {
+      res.status(500).json({
+        error: "Internal server error",
+        details: err instanceof Error ? err.message : "Unknown error"
+      });
+    }
+  });
 
   return app;
 }

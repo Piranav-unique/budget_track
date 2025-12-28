@@ -197,8 +197,8 @@ export function AIInsights({
               <AlertTriangle className="w-5 h-5 text-red-600" />
               <div>
                 <p className="font-medium text-red-900">AI Service Unavailable</p>
-                <p className="text-sm text-red-600">Please check your Groq API key to get AI insights</p>
-                <p className="text-xs text-red-500 mt-1">Verify GROQ_API_KEY in .env</p>
+                <p className="text-sm text-red-600">Please check your AI service connection to get AI insights</p>
+                <p className="text-xs text-red-500 mt-1">AI service authentication error</p>
               </div>
             </div>
           </CardContent>

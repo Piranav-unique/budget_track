@@ -1,5 +1,5 @@
 import { pool } from './db';
-import { User, InsertUser } from '@shared/api';
+import { User, InsertUser } from '../shared/api';
 
 export interface IStorage {
     getUser(id: number): Promise<User | undefined>;

@@ -1,5 +1,12 @@
 import { Pool } from 'pg';
 
+console.log('Initializing database pool...');
+if (!process.env.DATABASE_URL) {
+  console.error('CRITICAL: DATABASE_URL is missing in environment variables!');
+} else {
+  console.log('DATABASE_URL is present.');
+}
+
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });

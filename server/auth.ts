@@ -5,7 +5,7 @@ import session from 'express-session';
 import { scrypt, randomBytes, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
 import { storage } from './storage';
-import { User } from '@shared/api';
+import { User } from '../shared/api';
 
 const scryptAsync = promisify(scrypt);
 

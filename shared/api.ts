@@ -18,7 +18,7 @@ export interface CategorizeRequest {
 export interface CategorizeResponse {
   category: string;
   confidence?: number; // Optional: AI confidence score 0-1
-  method: 'ai'; // Which method was used
+  method: 'ai' | 'fallback'; // Which method was used
 }
 
 export interface CreateExpenseRequest {

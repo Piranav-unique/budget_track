@@ -172,33 +172,33 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-background p-4 md:p-6 lg:p-8">
-        <div className="max-w-7xl mx-auto space-y-6 lg:space-y-8">
+      <div className="min-h-screen bg-background p-3 md:p-6 lg:p-8">
+        <div className="max-w-7xl mx-auto space-y-4 md:space-y-6 lg:space-y-8">
           {/* Professional Header Section */}
-          <div className="bg-card rounded-3xl shadow-sm border border-border p-6 lg:p-8">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="bg-card rounded-3xl shadow-sm border border-border p-4 md:p-6 lg:p-8">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 md:gap-6">
               <div className="space-y-3">
-                <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 flex items-center justify-center shadow-xl shadow-blue-500/25">
-                    <BarChart3 className="w-8 h-8 text-white" />
+                <div className="flex items-center gap-3 md:gap-4">
+                  <div className="w-12 h-12 md:w-16 md:h-16 rounded-3xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 flex items-center justify-center shadow-xl shadow-blue-500/25">
+                    <BarChart3 className="w-6 h-6 md:w-8 md:h-8 text-white" />
                   </div>
                   <div>
-                    <h1 className="text-3xl lg:text-4xl font-bold text-foreground tracking-tight">
+                    <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-foreground tracking-tight">
                       Financial Dashboard
                     </h1>
-                    <p className="text-muted-foreground text-base lg:text-lg font-medium">
+                    <p className="text-muted-foreground text-sm md:text-base lg:text-lg font-medium">
                       Complete overview of your financial health
                     </p>
                   </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs md:text-sm">
                   <div className="flex items-center gap-2 text-muted-foreground">
-                    <Calendar className="w-4 h-4" />
+                    <Calendar className="w-3 h-3 md:w-4 md:h-4" />
                     <span className="hidden sm:inline">Last updated: {new Date().toLocaleDateString()}</span>
                     <span className="sm:hidden">{new Date().toLocaleDateString()}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-3 py-1 rounded-full">
-                    <Activity className="w-4 h-4" />
+                  <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 md:px-3 md:py-1 rounded-full">
+                    <Activity className="w-3 h-3 md:w-4 md:h-4" />
                     <span className="font-medium">Live Data</span>
                   </div>
                 </div>
@@ -216,23 +216,23 @@ export default function Dashboard() {
                   variant="outline"
                   size="sm"
                   onClick={fetchExpenses}
-                  className="gap-2 bg-card hover:bg-muted/20 border-border text-foreground shadow-sm hover:shadow-md transition-all"
+                  className="gap-2 bg-card hover:bg-muted/20 border-border text-foreground shadow-sm hover:shadow-md transition-all flex-1 sm:flex-none"
                 >
                   <RefreshCcw className="w-4 h-4" />
                   <span className="hidden sm:inline">Refresh</span>
                 </Button>
-                <Link to="/analytics">
+                <Link to="/analytics" className="flex-1 sm:flex-none">
                   <Button
                     variant="outline"
                     size="sm"
-                    className="gap-2 bg-card hover:bg-muted/20 border-border text-foreground shadow-sm hover:shadow-md transition-all"
+                    className="w-full gap-2 bg-card hover:bg-muted/20 border-border text-foreground shadow-sm hover:shadow-md transition-all"
                   >
                     <BarChart3 className="w-4 h-4" />
                     <span className="hidden sm:inline">Analytics</span>
                   </Button>
                 </Link>
-                <Link to="/add-expense">
-                  <Button className="gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/25 transition-all hover:scale-[1.02] hover:shadow-xl">
+                <Link to="/add-expense" className="flex-1 sm:flex-none">
+                  <Button className="w-full gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/25 transition-all hover:scale-[1.02] hover:shadow-xl">
                     <Plus className="w-4 h-4" />
                     <span className="hidden sm:inline">Add Expense</span>
                     <span className="sm:hidden">Add</span>
@@ -243,7 +243,7 @@ export default function Dashboard() {
           </div>
 
           {/* Professional KPI Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {/* Monthly Budget Card */}
             <Card className="border-0 shadow-lg shadow-slate-200/60 dark:shadow-slate-900/60 bg-card overflow-hidden relative group hover:-translate-y-1 transition-all duration-300 hover:shadow-xl">
               <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">

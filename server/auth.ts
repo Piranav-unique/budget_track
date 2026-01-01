@@ -123,8 +123,8 @@ export function setupAuth(app: Express) {
         console.warn('Google OAuth environment variables are not set. Google login is disabled.');
     }
 
-    const githubClientId = process.env.GITHUB_CLIENT_ID;
-    const githubClientSecret = process.env.GITHUB_CLIENT_SECRET;
+    const githubClientId = process.env.GH_CLIENT_ID;
+    const githubClientSecret = process.env.GH_CLIENT_SECRET;
     const githubCallbackURL = process.env.GITHUB_CALLBACK_URL || '/api/auth/github/callback';
 
     if (githubClientId && githubClientSecret) {

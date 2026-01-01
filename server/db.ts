@@ -1,4 +1,10 @@
 import { Pool, PoolConfig } from 'pg';
+import dns from 'dns';
+
+// Force IPv4 Address resolution to fix Render/Supabase connection issues
+if (dns.setDefaultResultOrder) {
+  dns.setDefaultResultOrder('ipv4first');
+}
 
 console.log('Initializing database pool...');
 if (!process.env.DATABASE_URL) {

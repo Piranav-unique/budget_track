@@ -54,6 +54,34 @@ export async function initDb() {
       );
     `);
 
+    // Create income_sources table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS income_sources (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        amount DECIMAL(10, 2) NOT NULL,
+        frequency TEXT NOT NULL CHECK (frequency IN ('monthly', 'weekly', 'bi-weekly', 'yearly')),
+        description TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Create budgets table (One per user)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS budgets (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        monthly_limit DECIMAL(10, 2) DEFAULT 0,
+        savings_goal DECIMAL(10, 2) DEFAULT 0,
+        income DECIMAL(10, 2) DEFAULT 0,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT unique_user_budget UNIQUE (user_id)
+      );
+    `);
+
     console.log("Database connected & tables initialized");
   } catch (error) {
     console.error("Error initializing database:", error);

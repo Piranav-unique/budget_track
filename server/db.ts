@@ -1,4 +1,4 @@
-import { Pool } from 'pg';
+import { Pool, PoolConfig } from 'pg';
 
 console.log('Initializing database pool...');
 if (!process.env.DATABASE_URL) {
@@ -7,12 +7,19 @@ if (!process.env.DATABASE_URL) {
   console.log('DATABASE_URL is present.');
 }
 
-export const pool = new Pool({
+const isProduction = process.env.NODE_ENV === "production";
+
+const poolConfig: PoolConfig = {
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : undefined,
-  // Force IPv4 to avoid Render IPv6 resolving issues
-  ...((process.env.NODE_ENV === "production") ? { family: 4 } : {})
-});
+  ssl: isProduction ? { rejectUnauthorized: false } : undefined,
+};
+
+if (isProduction) {
+  // Explicitly force IPv4 to prevent Render from trying (and failing) to use Supabase's IPv6 address
+  (poolConfig as any).family = 4;
+}
+
+export const pool = new Pool(poolConfig);
 
 export const query = (text: string, params?: any[]) => pool.query(text, params);
 

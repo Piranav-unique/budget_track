@@ -1,20 +1,4 @@
-import { Pool, PoolConfig } from 'pg';
-import dns from 'dns';
-
-// CRITICAL FIX: Monkey-patch dns.lookup to strictly force IPv4
-// This prevents Render from resolving Supabase to an unreachable IPv6 address
-const originalLookup = dns.lookup;
-(dns as any).lookup = (hostname: string, options: any, callback: any) => {
-  if (typeof options === 'function') {
-    callback = options;
-    options = {};
-  }
-  options = options || {};
-  if (!options.family) {
-    options.family = 4;
-  }
-  return originalLookup(hostname, options, callback);
-};
+import { Pool } from 'pg';
 
 console.log('Initializing database pool...');
 if (!process.env.DATABASE_URL) {
@@ -23,19 +7,10 @@ if (!process.env.DATABASE_URL) {
   console.log('DATABASE_URL is present.');
 }
 
-const isProduction = process.env.NODE_ENV === "production";
-
-const poolConfig: PoolConfig = {
+export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: isProduction ? { rejectUnauthorized: false } : undefined,
-};
-
-if (isProduction) {
-  // Explicitly force IPv4 to prevent Render from trying (and failing) to use Supabase's IPv6 address
-  (poolConfig as any).family = 4;
-}
-
-export const pool = new Pool(poolConfig);
+  ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : undefined,
+});
 
 export const query = (text: string, params?: any[]) => pool.query(text, params);
 

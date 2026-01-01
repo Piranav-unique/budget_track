@@ -9,6 +9,7 @@ if (!process.env.DATABASE_URL) {
 
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : undefined,
 });
 
 export const query = (text: string, params?: any[]) => pool.query(text, params);
@@ -27,7 +28,7 @@ export async function initDb() {
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
     `);
-    
+
     // Add new columns if they don't exist (for existing databases)
     await pool.query(`
       ALTER TABLE users 

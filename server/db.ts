@@ -1,10 +1,20 @@
 import { Pool, PoolConfig } from 'pg';
 import dns from 'dns';
 
-// Force IPv4 Address resolution to fix Render/Supabase connection issues
-if (dns.setDefaultResultOrder) {
-  dns.setDefaultResultOrder('ipv4first');
-}
+// CRITICAL FIX: Monkey-patch dns.lookup to strictly force IPv4
+// This prevents Render from resolving Supabase to an unreachable IPv6 address
+const originalLookup = dns.lookup;
+(dns as any).lookup = (hostname: string, options: any, callback: any) => {
+  if (typeof options === 'function') {
+    callback = options;
+    options = {};
+  }
+  options = options || {};
+  if (!options.family) {
+    options.family = 4;
+  }
+  return originalLookup(hostname, options, callback);
+};
 
 console.log('Initializing database pool...');
 if (!process.env.DATABASE_URL) {

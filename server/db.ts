@@ -10,6 +10,8 @@ if (!process.env.DATABASE_URL) {
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : undefined,
+  // Force IPv4 to avoid Render IPv6 resolving issues
+  ...((process.env.NODE_ENV === "production") ? { family: 4 } : {})
 });
 
 export const query = (text: string, params?: any[]) => pool.query(text, params);

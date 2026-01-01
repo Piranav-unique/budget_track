@@ -35,6 +35,7 @@ import { cn } from "@/lib/utils";
 import Layout from "@/components/Layout";
 import { AIInsights } from "@/components/AIInsights";
 import { useAIInsights } from "@/hooks/use-ai-insights";
+import { useAuth } from "@/hooks/use-auth";
 
 // Helper to remove extra quotes if they exist from CSV import or similar
 const cleanValue = (val: string | undefined | null) => {
@@ -43,20 +44,23 @@ const cleanValue = (val: string | undefined | null) => {
 };
 
 export default function Dashboard() {
+  const { user } = useAuth();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [budget, setBudget] = useState<Budget>({
-    monthly: 2000,
-    weekly: 500,
-    savingsGoal: 500,
+    monthly: 0,
+    weekly: 0,
+    savingsGoal: 0,
+    income: 0,
   });
 
+
   // AI Insights hook
-  const { 
-    insights, 
-    loading: insightsLoading, 
-    error: insightsError, 
-    lastUpdated, 
-    refreshInsights 
+  const {
+    insights,
+    loading: insightsLoading,
+    error: insightsError,
+    lastUpdated,
+    refreshInsights
   } = useAIInsights(budget, expenses);
 
   const fetchExpenses = async () => {
@@ -90,21 +94,47 @@ export default function Dashboard() {
     }
   };
 
+  const loadBudget = () => {
+    if (user) {
+      const budgetKey = `budget_${user.id}`;
+      const savedBudget = localStorage.getItem(budgetKey);
+      if (savedBudget) {
+        try {
+          const parsed = JSON.parse(savedBudget);
+          setBudget({
+            monthly: parsed.monthly || 0,
+            weekly: parsed.weekly || Math.round((parsed.monthly || 0) / 4),
+            savingsGoal: parsed.savingsGoal || 0,
+            income: parsed.income || 0,
+            incomeSources: parsed.incomeSources || [],
+          });
+        } catch (e) {
+          console.error("Error loading budget:", e);
+        }
+      }
+    }
+  };
+
   useEffect(() => {
     fetchExpenses();
     const interval = setInterval(fetchExpenses, 10000); // Poll every 10s
 
-    const savedBudget = localStorage.getItem("budget");
-    if (savedBudget) {
-      try {
-        setBudget(JSON.parse(savedBudget));
-      } catch (e) {
-        console.error("Error loading budget:", e);
-      }
-    }
+    loadBudget();
 
-    return () => clearInterval(interval);
-  }, []);
+    // Listen for storage changes (when budget is updated in BudgetSettings)
+    const handleStorageChange = () => {
+      loadBudget();
+    };
+    window.addEventListener('storage', handleStorageChange);
+    // Also listen for custom storage event
+    window.addEventListener('budgetUpdated', handleStorageChange);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('budgetUpdated', handleStorageChange);
+    };
+  }, [user]);
 
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -112,7 +142,7 @@ export default function Dashboard() {
 
   const monthlySpent = getTotalSpent(expenses, monthStart, monthEnd);
   const monthlyRemaining = budget.monthly - monthlySpent;
-  const monthlyProgress = (monthlySpent / budget.monthly) * 100;
+  const monthlyProgress = budget.monthly > 0 ? (monthlySpent / budget.monthly) * 100 : 0;
 
   // Weekly calculations
   const weekStart = new Date(now);
@@ -122,7 +152,7 @@ export default function Dashboard() {
 
   const weeklySpent = getTotalSpent(expenses, weekStart, weekEnd);
   const weeklyRemaining = budget.weekly - weeklySpent;
-  const weeklyProgress = (weeklySpent / budget.weekly) * 100;
+  const weeklyProgress = budget.weekly > 0 ? (weeklySpent / budget.weekly) * 100 : 0;
 
   // Top categories
   const categoryTotals: Record<string, number> = {};
@@ -142,10 +172,10 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30 p-4 md:p-6 lg:p-8">
+      <div className="min-h-screen bg-background p-4 md:p-6 lg:p-8">
         <div className="max-w-7xl mx-auto space-y-6 lg:space-y-8">
           {/* Professional Header Section */}
-          <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 lg:p-8">
+          <div className="bg-card rounded-3xl shadow-sm border border-border p-6 lg:p-8">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
               <div className="space-y-3">
                 <div className="flex items-center gap-4">
@@ -153,57 +183,59 @@ export default function Dashboard() {
                     <BarChart3 className="w-8 h-8 text-white" />
                   </div>
                   <div>
-                    <h1 className="text-3xl lg:text-4xl font-bold text-slate-900 tracking-tight">
+                    <h1 className="text-3xl lg:text-4xl font-bold text-foreground tracking-tight">
                       Financial Dashboard
                     </h1>
-                    <p className="text-slate-600 text-base lg:text-lg font-medium">
+                    <p className="text-muted-foreground text-base lg:text-lg font-medium">
                       Complete overview of your financial health
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-4 text-sm">
-                  <div className="flex items-center gap-2 text-slate-500">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm">
+                  <div className="flex items-center gap-2 text-muted-foreground">
                     <Calendar className="w-4 h-4" />
-                    <span>Last updated: {new Date().toLocaleDateString()}</span>
+                    <span className="hidden sm:inline">Last updated: {new Date().toLocaleDateString()}</span>
+                    <span className="sm:hidden">{new Date().toLocaleDateString()}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full">
+                  <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-3 py-1 rounded-full">
                     <Activity className="w-4 h-4" />
                     <span className="font-medium">Live Data</span>
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="hidden lg:flex items-center gap-2 bg-slate-50 rounded-xl px-4 py-2">
-                  <Search className="w-4 h-4 text-slate-400" />
-                  <input 
-                    type="text" 
-                    placeholder="Search expenses..." 
-                    className="bg-transparent border-0 outline-0 text-sm text-slate-600 placeholder-slate-400 w-32"
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                <div className="hidden lg:flex items-center gap-2 bg-muted/20 rounded-xl px-4 py-2">
+                  <Search className="w-4 h-4 text-muted-foreground" />
+                  <input
+                    type="text"
+                    placeholder="Search expenses..."
+                    className="bg-transparent border-0 outline-0 text-sm text-foreground placeholder:text-muted-foreground w-32"
                   />
                 </div>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={fetchExpenses}
-                  className="gap-2 bg-white hover:bg-slate-50 border-slate-200 text-slate-600 shadow-sm hover:shadow-md transition-all"
+                  className="gap-2 bg-card hover:bg-muted/20 border-border text-foreground shadow-sm hover:shadow-md transition-all"
                 >
                   <RefreshCcw className="w-4 h-4" />
-                  Refresh
+                  <span className="hidden sm:inline">Refresh</span>
                 </Button>
                 <Link to="/analytics">
                   <Button
                     variant="outline"
                     size="sm"
-                    className="gap-2 bg-white hover:bg-slate-50 border-slate-200 text-slate-600 shadow-sm hover:shadow-md transition-all"
+                    className="gap-2 bg-card hover:bg-muted/20 border-border text-foreground shadow-sm hover:shadow-md transition-all"
                   >
                     <BarChart3 className="w-4 h-4" />
-                    Analytics
+                    <span className="hidden sm:inline">Analytics</span>
                   </Button>
                 </Link>
                 <Link to="/add-expense">
                   <Button className="gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/25 transition-all hover:scale-[1.02] hover:shadow-xl">
                     <Plus className="w-4 h-4" />
-                    Add Expense
+                    <span className="hidden sm:inline">Add Expense</span>
+                    <span className="sm:hidden">Add</span>
                   </Button>
                 </Link>
               </div>
@@ -211,9 +243,9 @@ export default function Dashboard() {
           </div>
 
           {/* Professional KPI Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {/* Monthly Budget Card */}
-            <Card className="border-0 shadow-lg shadow-slate-200/60 bg-white overflow-hidden relative group hover:-translate-y-1 transition-all duration-300 hover:shadow-xl">
+            <Card className="border-0 shadow-lg shadow-slate-200/60 dark:shadow-slate-900/60 bg-card overflow-hidden relative group hover:-translate-y-1 transition-all duration-300 hover:shadow-xl">
               <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
                 <Wallet className="w-32 h-32 text-blue-500" />
               </div>
@@ -224,20 +256,20 @@ export default function Dashboard() {
                   </div>
                   <span
                     className={cn(
-                      "text-xs font-bold px-3 py-1.5 rounded-full uppercase tracking-wide",
+                      "text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest",
                       monthlyRemaining < 0
                         ? "bg-red-100 text-red-700 border border-red-200"
-                        : "bg-emerald-100 text-emerald-700 border border-emerald-200",
+                        : "bg-emerald-100/50 text-emerald-600 border border-emerald-100",
                     )}
                   >
                     Monthly
                   </span>
                 </div>
-                <div className="space-y-2 mb-6">
-                  <p className="text-sm text-slate-500 font-medium uppercase tracking-wide">
+                <div className="space-y-1 mb-6">
+                  <p className="text-xs text-slate-400 font-bold uppercase tracking-[0.15em]">
                     Total Spent
                   </p>
-                  <h3 className="text-3xl font-bold text-slate-900">
+                  <h3 className="text-3xl font-bold text-foreground">
                     ₹{monthlySpent.toLocaleString()}
                   </h3>
                   <div className="flex items-center gap-2 text-sm">
@@ -246,9 +278,9 @@ export default function Dashboard() {
                     </span>
                     <div className={cn(
                       "flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full",
-                      monthlyProgress > 100 ? "bg-red-50 text-red-600" : 
-                      monthlyProgress > 80 ? "bg-amber-50 text-amber-600" : 
-                      "bg-emerald-50 text-emerald-600"
+                      monthlyProgress > 100 ? "bg-red-50 text-red-600" :
+                        monthlyProgress > 80 ? "bg-amber-50 text-amber-600" :
+                          "bg-emerald-50 text-emerald-600"
                     )}>
                       {monthlyProgress > 100 ? (
                         <TrendingUp className="w-3 h-3" />
@@ -264,8 +296,8 @@ export default function Dashboard() {
                     <div
                       className={cn(
                         "h-full rounded-full transition-all duration-700 ease-out",
-                        monthlyRemaining < 0 
-                          ? "bg-gradient-to-r from-red-500 to-red-600" 
+                        monthlyRemaining < 0
+                          ? "bg-gradient-to-r from-red-500 to-red-600"
                           : "bg-gradient-to-r from-blue-500 to-blue-600",
                       )}
                       style={{ width: `${Math.min(monthlyProgress, 100)}%` }}
@@ -292,88 +324,8 @@ export default function Dashboard() {
               </CardContent>
             </Card>
 
-            {/* Weekly Budget Card */}
-            <Card className="border-0 shadow-lg shadow-slate-200/60 bg-white overflow-hidden relative group hover:-translate-y-1 transition-all duration-300 hover:shadow-xl">
-              <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                <Calendar className="w-32 h-32 text-indigo-500" />
-              </div>
-              <CardContent className="p-6 relative z-10">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/25">
-                    <Calendar className="w-6 h-6" />
-                  </div>
-                  <span
-                    className={cn(
-                      "text-xs font-bold px-3 py-1.5 rounded-full uppercase tracking-wide",
-                      weeklyRemaining < 0
-                        ? "bg-red-100 text-red-700 border border-red-200"
-                        : "bg-indigo-100 text-indigo-700 border border-indigo-200",
-                    )}
-                  >
-                    Weekly
-                  </span>
-                </div>
-                <div className="space-y-2 mb-6">
-                  <p className="text-sm text-slate-500 font-medium uppercase tracking-wide">
-                    This Week
-                  </p>
-                  <h3 className="text-3xl font-bold text-slate-900">
-                    ₹{weeklySpent.toLocaleString()}
-                  </h3>
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className="text-slate-400">
-                      of ₹{budget.weekly.toLocaleString()}
-                    </span>
-                    <div className={cn(
-                      "flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full",
-                      weeklyProgress > 100 ? "bg-red-50 text-red-600" : 
-                      weeklyProgress > 80 ? "bg-amber-50 text-amber-600" : 
-                      "bg-emerald-50 text-emerald-600"
-                    )}>
-                      {weeklyProgress > 100 ? (
-                        <TrendingUp className="w-3 h-3" />
-                      ) : (
-                        <TrendingDown className="w-3 h-3" />
-                      )}
-                      {weeklyProgress.toFixed(0)}%
-                    </div>
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden">
-                    <div
-                      className={cn(
-                        "h-full rounded-full transition-all duration-700 ease-out",
-                        weeklyRemaining < 0 
-                          ? "bg-gradient-to-r from-red-500 to-red-600" 
-                          : "bg-gradient-to-r from-indigo-500 to-indigo-600",
-                      )}
-                      style={{ width: `${Math.min(weeklyProgress, 100)}%` }}
-                    />
-                  </div>
-                  <div className="flex justify-between text-xs font-medium">
-                    <span className="text-slate-500">
-                      {weeklyProgress.toFixed(0)}% used
-                    </span>
-                    <span
-                      className={cn(
-                        "font-semibold",
-                        weeklyRemaining < 0
-                          ? "text-red-600"
-                          : "text-indigo-600"
-                      )}
-                    >
-                      {weeklyRemaining < 0
-                        ? `Over by ₹${Math.abs(weeklyRemaining).toLocaleString()}`
-                        : `₹${weeklyRemaining.toLocaleString()} left`}
-                    </span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
             {/* Total Balance Card */}
-            <Card className="border-0 shadow-lg shadow-emerald-200/60 bg-white overflow-hidden relative group hover:-translate-y-1 transition-all duration-300 hover:shadow-xl">
+            <Card className="border-0 shadow-lg shadow-emerald-200/60 dark:shadow-emerald-900/40 bg-card overflow-hidden relative group hover:-translate-y-1 transition-all duration-300 hover:shadow-xl">
               <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
                 <DollarSign className="w-32 h-32 text-emerald-500" />
               </div>
@@ -382,20 +334,20 @@ export default function Dashboard() {
                   <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center text-white shadow-lg shadow-emerald-500/25">
                     <DollarSign className="w-6 h-6" />
                   </div>
-                  <span className="text-xs font-bold px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200 uppercase tracking-wide">
+                  <span className="text-[10px] font-bold px-3 py-1 rounded-full bg-emerald-100/50 text-emerald-600 border border-emerald-100 uppercase tracking-widest">
                     Balance
                   </span>
                 </div>
-                <div className="space-y-2 mb-6">
-                  <p className="text-sm text-slate-500 font-medium uppercase tracking-wide">
+                <div className="space-y-1 mb-6">
+                  <p className="text-xs text-slate-400 font-bold uppercase tracking-[0.15em]">
                     Available Budget
                   </p>
-                  <h3 className="text-3xl font-bold text-slate-900">
-                    ₹{(budget.monthly + budget.weekly - monthlySpent - weeklySpent).toLocaleString()}
+                  <h3 className="text-3xl font-bold text-foreground">
+                    ₹{monthlyRemaining.toLocaleString()}
                   </h3>
                   <div className="flex items-center gap-2 text-sm">
                     <span className="text-slate-400">
-                      Combined remaining
+                      Monthly remaining
                     </span>
                     <div className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full bg-emerald-50 text-emerald-600">
                       <TrendingUp className="w-3 h-3" />
@@ -404,15 +356,10 @@ export default function Dashboard() {
                   </div>
                 </div>
                 <div className="space-y-3">
-                  <div className="grid grid-cols-2 gap-3 text-xs">
-                    <div className="bg-slate-50 rounded-lg p-3">
-                      <p className="text-slate-500 font-medium">Monthly Left</p>
-                      <p className="font-bold text-slate-900">₹{monthlyRemaining.toLocaleString()}</p>
-                    </div>
-                    <div className="bg-slate-50 rounded-lg p-3">
-                      <p className="text-slate-500 font-medium">Weekly Left</p>
-                      <p className="font-bold text-slate-900">₹{weeklyRemaining.toLocaleString()}</p>
-                    </div>
+                  <div className="bg-slate-50 rounded-lg p-4">
+                    <p className="text-slate-500 font-medium text-sm mb-1">Monthly Budget</p>
+                    <p className="font-bold text-foreground text-lg">₹{budget.monthly.toLocaleString()}</p>
+                    <p className="text-xs text-slate-400 mt-1">Spent: ₹{monthlySpent.toLocaleString()}</p>
                   </div>
                 </div>
               </CardContent>
@@ -429,7 +376,7 @@ export default function Dashboard() {
             />
           </div>
 
-          {/* AI Insights Section */}
+          {/* AI Insights Section - Square Boxes */}
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
             <AIInsights
               insights={insights}
@@ -452,8 +399,8 @@ export default function Dashboard() {
                       <Clock className="w-5 h-5 text-slate-600" />
                     </div>
                     <div>
-                      <h2 className="text-xl font-bold text-slate-900">Recent Transactions</h2>
-                      <p className="text-sm text-slate-500">Latest expense activity</p>
+                      <h2 className="text-xl font-bold text-foreground">Recent Transactions</h2>
+                      <p className="text-sm text-muted-foreground">Latest expense activity</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
@@ -491,11 +438,11 @@ export default function Dashboard() {
                             {categoryEmojis[expense.category]}
                           </div>
                           <div>
-                            <p className="font-semibold text-slate-900">
+                            <p className="font-semibold text-foreground">
                               {expense.description}
                             </p>
-                            <div className="flex items-center gap-2 text-xs text-slate-500 mt-1">
-                              <span className="capitalize px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-medium">
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                              <span className="capitalize px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">
                                 {expense.category}
                               </span>
                               <span>•</span>
@@ -504,7 +451,7 @@ export default function Dashboard() {
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="font-bold text-slate-900">
+                          <p className="font-bold text-foreground">
                             -₹{expense.amount.toFixed(2)}
                           </p>
                         </div>
@@ -516,10 +463,10 @@ export default function Dashboard() {
                     <div className="w-16 h-16 rounded-full bg-slate-50 mx-auto flex items-center justify-center mb-4">
                       <Wallet className="w-8 h-8 text-slate-300" />
                     </div>
-                    <h3 className="text-lg font-medium text-slate-900 mb-1">
+                    <h3 className="text-lg font-medium text-foreground mb-1">
                       No expenses yet
                     </h3>
-                    <p className="text-slate-500 mb-4">
+                    <p className="text-muted-foreground mb-4">
                       Start tracking your spending to see it here.
                     </p>
                     <Link to="/add-expense">
@@ -534,8 +481,8 @@ export default function Dashboard() {
             <div className="space-y-6">
               {/* Top Categories */}
               <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-                <h3 className="font-bold text-slate-900 mb-6 flex items-center gap-2">
-                  <Target className="w-5 h-5 text-slate-400" />
+                <h3 className="font-bold text-foreground mb-6 flex items-center gap-2">
+                  <Target className="w-5 h-5 text-muted-foreground" />
                   Top Spending
                 </h3>
                 {sortedCategories.length > 0 ? (
@@ -549,7 +496,7 @@ export default function Dashboard() {
                               {item.category}
                             </span>
                           </div>
-                          <span className="font-bold text-slate-900">
+                          <span className="font-bold text-foreground">
                             ₹{item.amount.toFixed(2)}
                           </span>
                         </div>
@@ -578,7 +525,7 @@ export default function Dashboard() {
               <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl shadow-xl p-6 text-white relative overflow-hidden border border-slate-700/50">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-full -mr-16 -mt-16 blur-2xl"></div>
                 <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-purple-500/10 to-blue-500/10 rounded-full -ml-12 -mb-12 blur-xl"></div>
-                
+
                 <div className="relative z-10">
                   <h3 className="font-bold mb-6 text-lg flex items-center gap-2">
                     <Settings className="w-5 h-5" />

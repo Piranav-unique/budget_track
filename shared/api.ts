@@ -45,7 +45,10 @@ export interface User {
   id: number;
   username: string;
   password?: string;
+  display_name?: string;
+  email?: string;
+  provider?: string;
 }
 
-export type InsertUser = Pick<User, 'username' | 'password'>;
+export type InsertUser = Pick<User, 'username' | 'password' | 'display_name' | 'email' | 'provider'>;
 

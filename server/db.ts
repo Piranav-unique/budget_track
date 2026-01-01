@@ -21,8 +21,19 @@ export async function initDb() {
         id SERIAL PRIMARY KEY,
         username TEXT UNIQUE NOT NULL,
         password TEXT NOT NULL,
+        display_name TEXT,
+        email TEXT,
+        provider TEXT,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
+    `);
+    
+    // Add new columns if they don't exist (for existing databases)
+    await pool.query(`
+      ALTER TABLE users 
+      ADD COLUMN IF NOT EXISTS display_name TEXT,
+      ADD COLUMN IF NOT EXISTS email TEXT,
+      ADD COLUMN IF NOT EXISTS provider TEXT;
     `);
 
     // Create expenses table
@@ -39,6 +50,20 @@ export async function initDb() {
         confidence TEXT,
         date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Create income_sources table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS income_sources (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        amount DECIMAL(10, 2) NOT NULL,
+        frequency TEXT NOT NULL CHECK (frequency IN ('monthly', 'weekly', 'bi-weekly', 'yearly')),
+        description TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
     `);
 

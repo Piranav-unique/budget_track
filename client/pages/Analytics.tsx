@@ -32,6 +32,7 @@ import {
 } from "recharts";
 
 import Layout from "@/components/Layout";
+import { useAuth } from "@/hooks/use-auth";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -42,7 +43,6 @@ import {
   categoryBgCharts,
   categoryEmojis,
   getSpentByCategory,
-  getUnnecessaryExpenses,
 } from "@/lib/expenses";
 
 // ---------------- helpers ----------------
@@ -54,13 +54,15 @@ const cleanValue = (val?: string | null) => {
 // ---------------- content component ----------------
 const AnalyticsContent: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [budget, setBudget] = useState<Budget>({
-    monthly: 2000,
-    weekly: 500,
-    savingsGoal: 500,
+    monthly: 0,
+    weekly: 0,
+    savingsGoal: 0,
   });
+  
 
   // ---------- fetch data ----------
   const fetchExpenses = async () => {
@@ -98,15 +100,18 @@ const AnalyticsContent: React.FC = () => {
   useEffect(() => {
     fetchExpenses();
 
-    const savedBudget = localStorage.getItem("budget");
-    if (savedBudget) {
-      try {
-        setBudget(JSON.parse(savedBudget));
-      } catch (err) {
-        console.error("Error loading budget:", err);
+    if (user) {
+      const budgetKey = `budget_${user.id}`;
+      const savedBudget = localStorage.getItem(budgetKey);
+      if (savedBudget) {
+        try {
+          setBudget(JSON.parse(savedBudget));
+        } catch (err) {
+          console.error("Error loading budget:", err);
+        }
       }
     }
-  }, []);
+  }, [user]);
 
   // ---------- date ranges ----------
   const now = new Date();
@@ -173,11 +178,8 @@ const AnalyticsContent: React.FC = () => {
     });
   }
 
-  const unnecessaryExpenses = getUnnecessaryExpenses(
-    expenses,
-    monthStart,
-    monthEnd,
-  );
+  // Removed rule-based unnecessary expenses - use AI insights instead
+  const unnecessaryExpenses: Expense[] = [];
 
   // totalSpending is now calculated above
     
@@ -200,7 +202,7 @@ const AnalyticsContent: React.FC = () => {
 
   // ---------------- render ----------------
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+    <div className="min-h-screen bg-background">
       <div className="relative z-10 p-4 md:p-8">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
@@ -240,9 +242,9 @@ const AnalyticsContent: React.FC = () => {
                     )}
                   </span>
                 </div>
-                <p className="text-sm text-gray-500 mb-1">Total Spending</p>
-                <p className="text-2xl font-bold">₹{totalSpending.toFixed(2)}</p>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-sm text-muted-foreground mb-1">Total Spending</p>
+                <p className="text-2xl font-bold text-foreground">₹{totalSpending.toFixed(2)}</p>
+                <p className="text-xs text-muted-foreground mt-1">
                   {spendingChange >= 0 ? 'Up' : 'Down'} from last month
                 </p>
               </CardContent>
@@ -256,12 +258,12 @@ const AnalyticsContent: React.FC = () => {
                     <div className="w-3 h-3 rounded-full" style={{ backgroundColor: topCategory.fill }} />
                   )}
                 </div>
-                <p className="text-sm text-gray-500 mb-1">Top Category</p>
+                <p className="text-sm text-muted-foreground mb-1">Top Category</p>
                 <p className="text-2xl font-bold capitalize">
                   {topCategory?.name || "None"}
                 </p>
                 {topCategory && (
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     {topCategory.percentage}% of total spending
                   </p>
                 )}
@@ -276,9 +278,9 @@ const AnalyticsContent: React.FC = () => {
                     {expenses.length} {expenses.length === 1 ? 'txn' : 'txns'}
                   </span>
                 </div>
-                <p className="text-sm text-gray-500 mb-1">Avg. Transaction</p>
-                <p className="text-2xl font-bold">₹{avgTransaction.toFixed(2)}</p>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-sm text-muted-foreground mb-1">Avg. Transaction</p>
+                <p className="text-2xl font-bold text-foreground">₹{avgTransaction.toFixed(2)}</p>
+                <p className="text-xs text-muted-foreground mt-1">
                   {expenses.length} transactions this month
                 </p>
               </CardContent>
@@ -292,7 +294,7 @@ const AnalyticsContent: React.FC = () => {
                     <div className="w-3 h-3 rounded-full" style={{ backgroundColor: secondCategory.fill }} />
                   )}
                 </div>
-                <p className="text-sm text-gray-500 mb-1">Budget Status</p>
+                <p className="text-sm text-muted-foreground mb-1">Budget Status</p>
                 <p className="text-2xl font-bold">
                   {budget.monthly > 0 ? `₹${(budget.monthly - totalSpending).toFixed(2)}` : 'N/A'}
                 </p>
@@ -371,12 +373,12 @@ const AnalyticsContent: React.FC = () => {
                         </ResponsiveContainer>
                       </div>
                       <div className="w-full md:w-1/2">
-                        <h3 className="font-medium text-gray-700 text-lg mb-4">Spending Breakdown</h3>
+                        <h3 className="font-medium text-foreground text-lg mb-4">Spending Breakdown</h3>
                         <div className="space-y-3 max-h-64 overflow-y-auto pr-2">
                           {pieData.map((item, index) => (
                             <div 
                               key={index} 
-                              className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 transition-colors"
+                              className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 transition-colors"
                             >
                               <div className="flex items-center flex-1 min-w-0">
                                 <div 
@@ -391,7 +393,7 @@ const AnalyticsContent: React.FC = () => {
                                 <span className="text-sm font-medium whitespace-nowrap">
                                   ₹{item.value.toFixed(2)}
                                 </span>
-                                <span className="text-xs text-gray-500 ml-2 w-12 text-right">
+                                <span className="text-xs text-muted-foreground ml-2 w-12 text-right">
                                   ({item.percentage}%)
                                 </span>
                               </div>
@@ -407,7 +409,7 @@ const AnalyticsContent: React.FC = () => {
                     </div>
                   ) : (
                     <div className="h-64 flex items-center justify-center">
-                      <p className="text-gray-500">No spending data available</p>
+                      <p className="text-muted-foreground">No spending data available</p>
                     </div>
                   )}
                 </CardContent>
@@ -437,19 +439,12 @@ const AnalyticsContent: React.FC = () => {
             <TabsContent value="insights">
               <Card>
                 <CardHeader>
-                  <CardTitle>High-Value Expenses</CardTitle>
+                  <CardTitle>Expense Insights</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {unnecessaryExpenses.length ? (
-                    unnecessaryExpenses.slice(0, 5).map((e) => (
-                      <div key={e.id} className="flex justify-between">
-                        <span>{e.description}</span>
-                        <span className="font-bold">₹{e.amount}</span>
-                      </div>
-                    ))
-                  ) : (
-                    <p>No high-value expenses</p>
-                  )}
+                  <p className="text-sm text-muted-foreground">
+                    Use AI insights on the Dashboard to get intelligent analysis of your spending patterns.
+                  </p>
                 </CardContent>
               </Card>
             </TabsContent>

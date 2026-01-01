@@ -14,6 +14,7 @@ type AuthContextType = {
     loginMutation: UseMutationResult<User, Error, LoginData>;
     logoutMutation: UseMutationResult<void, Error, void>;
     registerMutation: UseMutationResult<User, Error, InsertUser>;
+    updateProfileMutation: UseMutationResult<User, Error, Partial<Pick<User, 'display_name' | 'email'>>>;
 };
 
 type LoginData = Pick<User, "username" | "password">;
@@ -128,6 +129,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         },
     });
 
+    const updateProfileMutation = useMutation({
+        mutationFn: async (updates: Partial<Pick<User, 'display_name' | 'email'>>) => {
+            const res = await fetch("/api/user", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(updates),
+            });
+            if (!res.ok) {
+                throw new Error((await res.text()) || "Profile update failed");
+            }
+            return res.json();
+        },
+        onSuccess: (user: User) => {
+            // Manually update the query cache
+            refetch();
+            toast({
+                title: "Profile updated",
+                description: "Your profile has been updated successfully.",
+            });
+        },
+        onError: (error: Error) => {
+            toast({
+                title: "Update failed",
+                description: error.message,
+                variant: "destructive",
+            });
+        },
+    });
+
     return (
         <AuthContext.Provider
             value={{
@@ -137,6 +167,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 loginMutation,
                 logoutMutation,
                 registerMutation,
+                updateProfileMutation,
             }}
         >
             {children}

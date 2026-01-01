@@ -3,8 +3,9 @@ import express from "express";
 import cors from "cors";
 
 import { handleCategorizeExpense } from "./routes/categorize-expense";
-import { handleCreateExpense, handleListExpenses } from "./routes/expenses";
-import { handleGetAIInsights, handleGetQuickInsight } from "./routes/ai-insights";
+import { handleCreateExpense, handleListExpenses, handleUpdateExpense, handleDeleteExpense } from "./routes/expenses";
+import { handleCreateIncome, handleListIncome, handleUpdateIncome, handleDeleteIncome } from "./routes/income";
+import { handleGetAIInsights, handleGetQuickInsight, handleSuggestBudget } from "./routes/ai-insights";
 import { setupAuth } from "./auth";
 import { initDb } from "./db";
 
@@ -30,10 +31,19 @@ export function createServer() {
   app.post("/api/categorize-expense", handleCategorizeExpense);
   app.post("/api/expenses", handleCreateExpense);
   app.get("/api/expenses", handleListExpenses);
+  app.put("/api/expenses/:id", handleUpdateExpense);
+  app.delete("/api/expenses/:id", handleDeleteExpense);
+
+  // Income Sources endpoints
+  app.post("/api/income", handleCreateIncome);
+  app.get("/api/income", handleListIncome);
+  app.put("/api/income/:id", handleUpdateIncome);
+  app.delete("/api/income/:id", handleDeleteIncome);
 
   // AI Insights endpoints
   app.post("/api/ai-insights", handleGetAIInsights);
   app.post("/api/ai-insights/quick", handleGetQuickInsight);
+  app.post("/api/ai-insights/suggest", handleSuggestBudget);
 
   // Initialize DB tables
   initDb().catch((error) => {
@@ -49,7 +59,7 @@ export function createServer() {
       path: req.path,
       method: req.method
     });
-    
+
     if (!res.headersSent) {
       res.status(500).json({
         error: "Internal server error",

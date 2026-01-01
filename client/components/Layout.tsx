@@ -22,7 +22,7 @@ export default function Layout({ children }: LayoutProps) {
   return (
     <div className="flex h-screen bg-background">
       {/* Sidebar */}
-      <div className="hidden md:flex md:w-64 bg-primary flex-col">
+      <div className="hidden md:flex md:w-64 bg-primary dark:bg-slate-900 flex-col">
         <div className="p-6 border-b border-primary/20">
           <Link to="/" className="flex items-center gap-3">
             <div className="w-10 h-10 bg-primary-foreground rounded-lg flex items-center justify-center">
@@ -30,7 +30,7 @@ export default function Layout({ children }: LayoutProps) {
             </div>
             <div>
               <h1 className="text-xl font-bold text-primary-foreground">
-                MoneyTrack
+                SmartSpend Flow
               </h1>
               <p className="text-xs text-primary-foreground/70">Budget Smart</p>
             </div>
@@ -75,7 +75,7 @@ export default function Layout({ children }: LayoutProps) {
       <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-primary text-primary-foreground p-4 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2">
           <Wallet className="w-6 h-6" />
-          <span className="font-bold">MoneyTrack</span>
+          <span className="font-bold">SmartSpend Flow</span>
         </Link>
         <button
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -91,7 +91,7 @@ export default function Layout({ children }: LayoutProps) {
           className="md:hidden fixed inset-0 z-40 top-16 bg-black/50"
           onClick={() => setMobileMenuOpen(false)}
         >
-          <div className="bg-white w-full shadow-lg">
+          <div className="bg-card w-full shadow-lg border-b border-border">
             <nav className="p-4 space-y-2">
               {navItems.map((item) => {
                 const Icon = item.icon;
@@ -105,7 +105,7 @@ export default function Layout({ children }: LayoutProps) {
                       "flex items-center gap-3 px-4 py-3 rounded-lg transition-colors",
                       isActive
                         ? "bg-primary text-primary-foreground font-semibold"
-                        : "text-foreground hover:bg-secondary/10",
+                        : "text-foreground hover:bg-muted/20",
                     )}
                   >
                     <Icon className="w-5 h-5" />

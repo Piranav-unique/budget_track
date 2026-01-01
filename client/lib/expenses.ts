@@ -18,10 +18,20 @@ export interface Expense {
   note?: string;
 }
 
+export interface IncomeSource {
+  id: string;
+  name: string;
+  amount: number;
+  frequency: 'monthly' | 'weekly' | 'bi-weekly' | 'yearly';
+  description?: string;
+}
+
 export interface Budget {
   monthly: number;
   weekly: number;
   savingsGoal: number;
+  income?: number;
+  incomeSources?: IncomeSource[];
 }
 
 export interface SavingsGoal {
@@ -107,13 +117,13 @@ export function getSpentByCategory(
   return result;
 }
 
+// Removed rule-based unnecessary expenses filter
+// Use AI insights instead for intelligent expense analysis
 export function getUnnecessaryExpenses(
   expenses: Expense[],
   startDate: Date,
   endDate: Date,
 ): Expense[] {
-  return expenses
-    .filter((exp) => exp.date >= startDate && exp.date <= endDate)
-    .filter((exp) => exp.amount > 1000)
-    .sort((a, b) => b.amount - a.amount);
+  // Return empty array - let AI determine unnecessary expenses instead
+  return [];
 }

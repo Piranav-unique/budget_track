@@ -29,12 +29,71 @@ export class AIInsightsService {
   private model: string;
 
   constructor(model: string = 'llama-3.3-70b-versatile') {
-    this.groq = new Groq({ apiKey: process.env.GROQ_API_KEY || '' });
+    const apiKey = process.env.GROQ_API_KEY || '';
+    if (!apiKey || apiKey.trim() === '') {
+      throw new Error('GROQ_API_KEY is not configured. Please set the GROQ_API_KEY environment variable.');
+    }
+    this.groq = new Groq({ apiKey });
     this.model = model;
+  }
+
+  async suggestBudget(income: number): Promise<{ monthlySpend: number; savingsGoal: number; explanation: string }> {
+    try {
+      if (!process.env.GROQ_API_KEY || process.env.GROQ_API_KEY.trim() === '') {
+        throw new Error('GROQ_API_KEY is not configured.');
+      }
+
+      const response = await this.groq.chat.completions.create({
+        model: this.model,
+        messages: [
+          {
+            role: 'system',
+            content: `You are a professional financial planner. Based on the user's monthly income, suggest a balanced budget using the 50/30/20 rule or an optimized variation for students/low-income earners.
+            
+            CRITICAL: Respond ONLY with valid JSON - no other text.
+            
+            JSON format:
+            {
+              "monthlySpend": number,
+              "savingsGoal": number,
+              "explanation": "A short, friendly sentence explaining the recommendation (max 100 chars)"
+            }`
+          },
+          {
+            role: 'user',
+            content: `My monthly income is ₹${income}. What budget do you suggest?`
+          }
+        ],
+        temperature: 0.6,
+      });
+
+      const content = response.choices[0]?.message?.content || '{}';
+      let cleanContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').replace(/```/g, '');
+      const result = JSON.parse(cleanContent);
+
+      return {
+        monthlySpend: result.monthlySpend || Math.round(income * 0.8),
+        savingsGoal: result.savingsGoal || Math.round(income * 0.2),
+        explanation: result.explanation || "Balanced budget for your income level."
+      };
+    } catch (error) {
+      console.error('Error suggesting budget:', error);
+      // Fallback to 80/20 rule
+      return {
+        monthlySpend: Math.round(income * 0.8),
+        savingsGoal: Math.round(income * 0.2),
+        explanation: "Suggested based on common financial guidelines (80% spending, 20% savings)."
+      };
+    }
   }
 
   async generateInsights(expenses: ExpenseData[], budget: BudgetData): Promise<AIInsight[]> {
     try {
+      // Check if API key is still valid
+      if (!process.env.GROQ_API_KEY || process.env.GROQ_API_KEY.trim() === '') {
+        throw new Error('GROQ_API_KEY is not configured. Please set the GROQ_API_KEY environment variable.');
+      }
+
       // Prepare expense data for analysis
       const expenseAnalysis = this.prepareExpenseAnalysis(expenses, budget);
 
@@ -90,6 +149,17 @@ Keep it simple, helpful, and easy to read!`
       return insights;
     } catch (error) {
       console.error('Error generating AI insights:', error);
+
+      // Provide more specific error messages
+      if (error instanceof Error) {
+        if (error.message.includes('API key') || error.message.includes('authentication') || error.message.includes('401') || error.message.includes('403')) {
+          throw new Error('AI service authentication failed. Please check your GROQ_API_KEY configuration.');
+        }
+        if (error.message.includes('GROQ_API_KEY is not configured')) {
+          throw error; // Re-throw the specific error
+        }
+      }
+
       throw new Error(`AI service unavailable: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
@@ -119,11 +189,11 @@ Keep it simple, helpful, and easy to read!`
       .sort(([, a], [, b]) => b - a)
       .slice(0, 3);
 
-    // Find unusual expenses (above average)
+    // Let AI determine high expenses based on context, not hardcoded rules
+    // Return all expenses sorted by amount for AI to analyze
     const highExpenses = monthlyExpenses
-      .filter(e => e.amount > averageExpense * 1.5)
       .sort((a, b) => b.amount - a.amount)
-      .slice(0, 5);
+      .slice(0, 10);
 
     return {
       totalExpenses: monthlyExpenses.length,

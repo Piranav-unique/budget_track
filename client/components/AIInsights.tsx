@@ -114,7 +114,7 @@ export function AIInsights({
             ) : error ? (
               <div className="text-white/90 text-sm">
                 <p>AI insights unavailable</p>
-                <p className="text-xs text-white/70 mt-1">Check Groq connection</p>
+                <p className="text-xs text-white/70 mt-1">{error.includes('API key') ? 'Configure GROQ_API_KEY' : 'Check AI service connection'}</p>
               </div>
             ) : insights.length > 0 ? (
               <div className="space-y-3">
@@ -191,14 +191,23 @@ export function AIInsights({
       )}
 
       {error && (
-        <Card className="border border-red-200 bg-red-50">
+        <Card className="border border-red-200 bg-red-50 dark:bg-red-950/30 dark:border-red-800">
           <CardContent className="p-6">
-            <div className="flex items-center gap-3">
-              <AlertTriangle className="w-5 h-5 text-red-600" />
-              <div>
-                <p className="font-medium text-red-900">AI Service Unavailable</p>
-                <p className="text-sm text-red-600">Please check your AI service connection to get AI insights</p>
-                <p className="text-xs text-red-500 mt-1">AI service authentication error</p>
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="font-medium text-red-900 dark:text-red-100">AI Service Unavailable</p>
+                <p className="text-sm text-red-600 dark:text-red-400 mt-1">{error}</p>
+                {error.toLowerCase().includes('api key') || error.toLowerCase().includes('not configured') ? (
+                  <div className="mt-3 p-3 bg-red-100 dark:bg-red-900/30 rounded-lg border border-red-200 dark:border-red-800">
+                    <p className="text-xs font-medium text-red-800 dark:text-red-200 mb-1">To fix this:</p>
+                    <ol className="text-xs text-red-700 dark:text-red-300 list-decimal list-inside space-y-1">
+                      <li>Get a free API key from <a href="https://console.groq.com/" target="_blank" rel="noopener noreferrer" className="underline font-medium">Groq Console</a></li>
+                      <li>Add <code className="bg-red-200 dark:bg-red-900 px-1 rounded">GROQ_API_KEY=your_key_here</code> to your server's <code className="bg-red-200 dark:bg-red-900 px-1 rounded">.env</code> file</li>
+                      <li>Restart your server</li>
+                    </ol>
+                  </div>
+                ) : null}
               </div>
             </div>
           </CardContent>
@@ -206,7 +215,7 @@ export function AIInsights({
       )}
 
       {!loading && insights.length > 0 && (
-        <div className="grid gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           {insights.map((insight, index) => {
             const Icon = getInsightIcon(insight.type);
             const SeverityIcon = getSeverityIcon(insight.severity);
@@ -215,43 +224,44 @@ export function AIInsights({
               <Card
                 key={index}
                 className={cn(
-                  "border-l-4 transition-all hover:shadow-md",
-                  insight.severity === 'high' ? 'border-l-red-500' :
-                    insight.severity === 'medium' ? 'border-l-amber-500' :
-                      'border-l-emerald-500'
+                  "border-2 transition-all hover:shadow-lg hover:-translate-y-1 aspect-square flex flex-col group",
+                  insight.severity === 'high' ? 'border-red-300 bg-red-50/50 hover:bg-red-50' :
+                    insight.severity === 'medium' ? 'border-amber-300 bg-amber-50/50 hover:bg-amber-50' :
+                      'border-emerald-300 bg-emerald-50/50 hover:bg-emerald-50'
                 )}
               >
-                <CardContent className="p-6">
-                  <div className="flex items-start gap-4">
-                    <div className={cn(
-                      "w-12 h-12 rounded-xl flex items-center justify-center",
-                      getSeverityColor(insight.severity)
-                    )}>
-                      <Icon className="w-6 h-6" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <h3 className="font-semibold text-slate-900">{insight.title}</h3>
-                        <div className={cn(
-                          "flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium",
-                          getSeverityColor(insight.severity)
-                        )}>
-                          <SeverityIcon className="w-3 h-3" />
-                          {insight.severity}
-                        </div>
-                        {insight.actionable && (
-                          <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
-                            Actionable
-                          </span>
-                        )}
+                <CardContent className="p-5 flex-1 flex flex-col justify-between h-full">
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-center justify-between">
+                      <div className={cn(
+                        "w-12 h-12 rounded-xl flex items-center justify-center shadow-sm",
+                        getSeverityColor(insight.severity)
+                      )}>
+                        <Icon className="w-6 h-6" />
                       </div>
-                      <p className="text-slate-600 leading-relaxed">{insight.message}</p>
+                      <div className={cn(
+                        "flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium",
+                        getSeverityColor(insight.severity)
+                      )}>
+                        <SeverityIcon className="w-3 h-3" />
+                        {insight.severity}
+                      </div>
+                    </div>
+                    <h3 className="font-bold text-slate-900 text-base leading-tight">{insight.title}</h3>
+                  </div>
+                  
+                  <div className="flex flex-col gap-2 flex-1 justify-end">
+                    <p className="text-slate-700 text-sm leading-relaxed line-clamp-3">{insight.message}</p>
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      {insight.actionable && (
+                        <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
+                          Actionable
+                        </span>
+                      )}
                       {insight.category && (
-                        <div className="mt-2">
-                          <span className="text-xs text-slate-500">
-                            Related to: <span className="font-medium capitalize">{insight.category}</span>
-                          </span>
-                        </div>
+                        <span className="text-xs text-slate-500 font-medium capitalize">
+                          {insight.category}
+                        </span>
                       )}
                     </div>
                   </div>

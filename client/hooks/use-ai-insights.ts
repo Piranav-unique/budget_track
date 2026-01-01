@@ -1,29 +1,13 @@
 import { useState, useEffect } from 'react';
+import type { AIInsight, UseAIInsightsReturn } from '@/types/ai-insight';
 
-export interface AIInsight {
-  type: 'spending_pattern' | 'budget_alert' | 'savings_opportunity' | 'financial_health' | 'recommendation';
-  title: string;
-  message: string;
-  severity: 'low' | 'medium' | 'high';
-  actionable: boolean;
-  category?: string;
-}
-
-export interface AIInsightsResponse {
-  success: boolean;
-  insights: AIInsight[];
-  timestamp: string;
-  expenseCount: number;
-}
-
-export function useAIInsights(budget: any, expenses: any[]) {
+export function useAIInsights(budget?: any, expenses?: any[]): UseAIInsightsReturn {
   const [insights, setInsights] = useState<AIInsight[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   const fetchInsights = async () => {
-    // Don't fetch if no expenses - API will handle empty case
     setLoading(true);
     setError(null);
     
@@ -49,14 +33,14 @@ export function useAIInsights(budget: any, expenses: any[]) {
         throw new Error(errorMessage);
       }
 
-      const data: AIInsightsResponse = await response.json();
+      const data = await response.json();
       
       if (data.success && data.insights) {
         // Add id and date to insights if missing
-        const insightsWithIds = data.insights.map((insight, index) => ({
+        const insightsWithIds = data.insights.map((insight: any, index: number) => ({
           ...insight,
-          id: `insight-${Date.now()}-${index}`,
-          date: new Date(),
+          id: insight.id || `insight-${Date.now()}-${index}`,
+          date: insight.date ? new Date(insight.date) : new Date(),
         }));
         setInsights(insightsWithIds);
         setLastUpdated(new Date());
@@ -64,26 +48,28 @@ export function useAIInsights(budget: any, expenses: any[]) {
         setInsights([]);
       }
     } catch (err) {
-      console.error('Error fetching AI insights:', err);
-      setError(err instanceof Error ? err.message : 'AI service unavailable');
-      setInsights([]); // No fallback, just empty insights
+      console.error('Failed to fetch AI insights:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load insights. Please try again later.');
+      setInsights([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const refreshInsights = () => {
-    fetchInsights();
-  };
-
-  // Auto-fetch insights when budget or expenses change
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      fetchInsights();
-    }, 1000); // Debounce for 1 second
+    // Only fetch if we have budget data
+    if (budget) {
+      const timeoutId = setTimeout(() => {
+        fetchInsights();
+      }, 1000); // Debounce for 1 second
 
-    return () => clearTimeout(timeoutId);
-  }, [budget?.monthly, budget?.weekly, budget?.savingsGoal, expenses.length]);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [budget?.monthly, budget?.weekly, budget?.savingsGoal, expenses?.length]);
+
+  const refreshInsights = async () => {
+    await fetchInsights();
+  };
 
   return {
     insights,
@@ -93,4 +79,3 @@ export function useAIInsights(budget: any, expenses: any[]) {
     refreshInsights,
   };
 }
-

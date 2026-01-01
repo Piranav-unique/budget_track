@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import {
   ChevronLeft,
   User,
@@ -13,9 +13,12 @@ import {
   HelpCircle,
   Mail,
   Smartphone,
+  Edit2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -23,16 +26,97 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogClose,
 } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Layout from "@/components/Layout";
 import { useToast } from "@/components/ui/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 
 function SettingsContent() {
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const { user, logoutMutation, updateProfileMutation } = useAuth();
   const [loading, setLoading] = useState(false);
   const [notifications, setNotifications] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
+  const [theme, setTheme] = useState<"light" | "dark" | "system">("system");
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editDisplayName, setEditDisplayName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+
+  const applyTheme = (nextTheme: "light" | "dark" | "system") => {
+    if (typeof document === "undefined") return;
+
+    const root = document.documentElement;
+    if (nextTheme === "system") {
+      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      root.classList.toggle("dark", prefersDark);
+      setDarkMode(prefersDark);
+    } else {
+      root.classList.toggle("dark", nextTheme === "dark");
+      setDarkMode(nextTheme === "dark");
+    }
+
+    localStorage.setItem("theme", nextTheme);
+    setTheme(nextTheme);
+  };
+
+  useEffect(() => {
+    // Load notification preference
+    const storedNotifications = localStorage.getItem("notificationsEnabled");
+    if (storedNotifications !== null) {
+      setNotifications(storedNotifications === "true");
+    }
+
+    // Load theme preference
+    const storedTheme = (localStorage.getItem("theme") as "light" | "dark" | "system" | null) || "system";
+    setTheme(storedTheme);
+    applyTheme(storedTheme);
+  }, []);
+
+  // Initialize edit form when dialog opens or user changes
+  useEffect(() => {
+    if (editDialogOpen && user) {
+      setEditDisplayName(user.display_name || "");
+      setEditEmail(user.email || "");
+    }
+  }, [editDialogOpen, user]);
+
+  const handleUpdateProfile = () => {
+    if (!user) return;
+
+    const updates: Partial<{ display_name: string; email: string }> = {};
+    if (editDisplayName !== user.display_name) {
+      updates.display_name = editDisplayName.trim() || undefined;
+    }
+    if (editEmail !== user.email) {
+      if (editEmail && !editEmail.includes('@')) {
+        toast({
+          title: "Invalid email",
+          description: "Please enter a valid email address.",
+          variant: "destructive",
+        });
+        return;
+      }
+      updates.email = editEmail.trim() || undefined;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      toast({
+        title: "No changes",
+        description: "No changes were made to your profile.",
+      });
+      setEditDialogOpen(false);
+      return;
+    }
+
+    updateProfileMutation.mutate(updates, {
+      onSuccess: () => {
+        setEditDialogOpen(false);
+      },
+    });
+  };
 
   const handleExport = async () => {
     try {
@@ -91,7 +175,7 @@ function SettingsContent() {
       <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">
         {title}
       </h3>
-      <div className="bg-white rounded-xl border border-border shadow-sm overflow-hidden divide-y divide-slate-100">
+      <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden divide-y divide-border">
         {children}
       </div>
     </div>
@@ -114,7 +198,7 @@ function SettingsContent() {
   }) => (
     <div
       onClick={onClick}
-      className={`p-4 flex items-center justify-between hover:bg-slate-50 transition-colors ${onClick ? 'cursor-pointer' : ''}`}
+      className={`p-4 flex items-center justify-between hover:bg-muted/50 transition-colors ${onClick ? 'cursor-pointer' : ''}`}
     >
       <div className="flex items-center gap-3">
         <div className={`w-8 h-8 rounded-full flex items-center justify-center ${destructive ? 'bg-red-50 text-red-500' : 'bg-primary/5 text-primary'}`}>
@@ -132,7 +216,7 @@ function SettingsContent() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50/50 p-4 md:p-8">
+    <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-2xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
@@ -148,18 +232,79 @@ function SettingsContent() {
         </div>
 
         {/* Profile Card */}
-        <div className="bg-white rounded-xl p-6 border border-border shadow-sm flex items-center gap-4 mb-8">
+        <div className="bg-card rounded-xl p-6 border border-border shadow-sm flex items-center gap-4 mb-8">
           <Avatar className="w-16 h-16 border-2 border-white shadow-sm">
             <AvatarImage src="/avatar-placeholder.png" />
             <AvatarFallback className="bg-gradient-to-br from-primary to-purple-600 text-white text-xl">
-              P
+              {(user?.display_name?.[0] || user?.email?.[0] || user?.username?.[0] || "G").toUpperCase()}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1">
-            <h2 className="text-lg font-bold">Piranav</h2>
-            <p className="text-muted-foreground text-sm">piranav@example.com</p>
+            <h2 className="text-lg font-bold">
+              {user?.display_name || user?.email?.split('@')[0] || user?.username?.replace(/^(google|github)_/, '') || "Guest user"}
+            </h2>
+            <p className="text-muted-foreground text-sm">
+              {user ? `Signed in to your SmartSpend Flow account${user?.email ? ` (${user.email})` : ''}` : "Not signed in"}
+            </p>
           </div>
-          <Button variant="outline" size="sm">Edit Profile</Button>
+          <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Edit2 className="w-4 h-4 mr-2" />
+                Edit Profile
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Edit Profile</DialogTitle>
+                <DialogDescription>
+                  Update your display name and email address.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="display-name">Display Name</Label>
+                  <Input
+                    id="display-name"
+                    value={editDisplayName}
+                    onChange={(e) => setEditDisplayName(e.target.value)}
+                    placeholder="Enter your display name"
+                    disabled={updateProfileMutation.isPending}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    This is how your name will appear in the application.
+                  </p>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={editEmail}
+                    onChange={(e) => setEditEmail(e.target.value)}
+                    placeholder="Enter your email"
+                    disabled={updateProfileMutation.isPending}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Your email address for account notifications.
+                  </p>
+                </div>
+              </div>
+              <div className="flex justify-end gap-3">
+                <DialogClose asChild>
+                  <Button variant="outline" disabled={updateProfileMutation.isPending}>
+                    Cancel
+                  </Button>
+                </DialogClose>
+                <Button
+                  onClick={handleUpdateProfile}
+                  disabled={updateProfileMutation.isPending}
+                >
+                  {updateProfileMutation.isPending ? "Saving..." : "Save Changes"}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
 
         {/* Finance Settings */}
@@ -186,32 +331,101 @@ function SettingsContent() {
             icon={Bell}
             label="Notifications"
             action={
-              <Switch checked={notifications} onCheckedChange={setNotifications} />
+              <Switch
+                checked={notifications}
+                onCheckedChange={(checked) => {
+                  const value = Boolean(checked);
+                  setNotifications(value);
+                  localStorage.setItem("notificationsEnabled", String(value));
+                  toast({
+                    title: "Notifications",
+                    description: value
+                      ? "Notifications are enabled for this device."
+                      : "Notifications are disabled for this device.",
+                  });
+                }}
+              />
             }
           />
           <SettingItem
             icon={Moon}
             label="Dark Mode"
             action={
-              <Switch checked={darkMode} onCheckedChange={setDarkMode} />
+              <Switch
+                checked={darkMode}
+                onCheckedChange={(checked) => {
+                  const isDark = Boolean(checked);
+                  applyTheme(isDark ? "dark" : "light");
+                  toast({
+                    title: "Appearance updated",
+                    description: isDark
+                      ? "Dark mode enabled."
+                      : "Light mode enabled.",
+                  });
+                }}
+              />
             }
           />
           <SettingItem
             icon={Smartphone}
             label="App Appearance"
-            subLabel="System Default"
+            subLabel={
+              theme === "system"
+                ? "System Default"
+                : theme === "dark"
+                ? "Dark"
+                : "Light"
+            }
+            onClick={() => {
+              const next =
+                theme === "system" ? "light" : theme === "light" ? "dark" : "system";
+              applyTheme(next);
+              toast({
+                title: "Appearance updated",
+                description:
+                  next === "system"
+                    ? "Using system appearance."
+                    : next === "dark"
+                    ? "Dark mode enabled."
+                    : "Light mode enabled.",
+              });
+            }}
           />
         </SettingGroup>
 
         {/* Support */}
         <SettingGroup title="Support">
-          <SettingItem icon={HelpCircle} label="Help Center" />
-          <SettingItem icon={Mail} label="Contact Support" />
-          <SettingItem icon={Shield} label="Privacy Policy" />
+          <SettingItem
+            icon={HelpCircle}
+            label="Help Center"
+            subLabel="Basic help and tips"
+            onClick={() =>
+              toast({
+                title: "Help Center",
+                description:
+                  "Help articles will be available soon. For now, contact support via email.",
+              })
+            }
+          />
+          <SettingItem
+            icon={Mail}
+            label="Contact Support"
+            subLabel="support@smartspendflow.app"
+            onClick={() => {
+              window.location.href =
+                "mailto:support@smartspendflow.app?subject=SmartSpend%20Flow%20Support&body=Describe%20your%20issue%20here.";
+            }}
+          />
+          <SettingItem
+            icon={Shield}
+            label="Privacy Policy"
+            subLabel="How we handle your data"
+            onClick={() => navigate("/privacy")}
+          />
         </SettingGroup>
 
         {/* Danger Zone */}
-        <div className="bg-white rounded-xl border border-destructive/20 shadow-sm overflow-hidden">
+        <div className="bg-card rounded-xl border border-destructive/20 shadow-sm overflow-hidden">
           <Dialog>
             <DialogTrigger asChild>
               <div>
@@ -219,7 +433,6 @@ function SettingsContent() {
                   icon={LogOut}
                   label="Log Out"
                   destructive
-                  onClick={() => { }}
                 />
               </div>
             </DialogTrigger>
@@ -231,15 +444,37 @@ function SettingsContent() {
                 </DialogDescription>
               </DialogHeader>
               <div className="flex justify-end gap-3 mt-4">
-                <Button variant="outline">Cancel</Button>
-                <Button variant="destructive">Log Out</Button>
+                <DialogClose asChild>
+                  <Button variant="outline">Cancel</Button>
+                </DialogClose>
+                <DialogClose asChild>
+                  <Button
+                    variant="destructive"
+                    onClick={() => {
+                      logoutMutation.mutate(undefined, {
+                        onSuccess: () => {
+                          navigate("/login");
+                        },
+                        onError: (err: Error) => {
+                          toast({
+                            title: "Logout failed",
+                            description: err.message,
+                            variant: "destructive",
+                          });
+                        },
+                      });
+                    }}
+                  >
+                    Log Out
+                  </Button>
+                </DialogClose>
               </div>
             </DialogContent>
           </Dialog>
         </div>
 
         <p className="text-center text-xs text-muted-foreground mt-8">
-          MoneyTrack v1.0.2 • Built with ❤️
+          SmartSpend Flow v1.0.2 • Built with ❤️
         </p>
       </div>
     </div>

@@ -12,8 +12,8 @@ const distPath = path.join(__dirname, "../spa");
 app.use(express.static(distPath));
 
 // SPA fallback for non-API routes
-app.get("(.*)", (req, res, next) => {
-  if (req.path.startsWith("/api") || req.path.startsWith("/health")) {
+app.use((req, res, next) => {
+  if (req.method !== "GET" || req.path.startsWith("/api") || req.path.startsWith("/health")) {
     return next();
   }
 

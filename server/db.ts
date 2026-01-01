@@ -1,22 +1,28 @@
-import { Pool } from 'pg';
+import dns from "dns";
+dns.setDefaultResultOrder("ipv4first");
 
-console.log('Initializing database pool...');
+import { Pool } from "pg";
+
+console.log("Initializing database pool...");
+
 if (!process.env.DATABASE_URL) {
-  console.error('CRITICAL: DATABASE_URL is missing in environment variables!');
+  console.error("CRITICAL: DATABASE_URL is missing!");
 } else {
-  console.log('DATABASE_URL is present.');
+  console.log("DATABASE_URL is present.");
 }
 
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : undefined,
+  ssl: {
+    rejectUnauthorized: false, // REQUIRED for Supabase pooler
+  },
 });
 
-export const query = (text: string, params?: any[]) => pool.query(text, params);
+export const query = (text: string, params?: any[]) =>
+  pool.query(text, params);
 
 export async function initDb() {
   try {
-    // Create users table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
@@ -29,21 +35,12 @@ export async function initDb() {
       );
     `);
 
-    // Add new columns if they don't exist (for existing databases)
-    await pool.query(`
-      ALTER TABLE users 
-      ADD COLUMN IF NOT EXISTS display_name TEXT,
-      ADD COLUMN IF NOT EXISTS email TEXT,
-      ADD COLUMN IF NOT EXISTS provider TEXT;
-    `);
-
-    // Create expenses table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS expenses (
         id SERIAL PRIMARY KEY,
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         chat_id TEXT,
-        amount DECIMAL(10, 2) NOT NULL,
+        amount DECIMAL(10,2) NOT NULL,
         category TEXT NOT NULL,
         description TEXT,
         source TEXT,
@@ -54,23 +51,9 @@ export async function initDb() {
       );
     `);
 
-    // Create income_sources table
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS income_sources (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-        name TEXT NOT NULL,
-        amount DECIMAL(10, 2) NOT NULL,
-        frequency TEXT NOT NULL CHECK (frequency IN ('monthly', 'weekly', 'bi-weekly', 'yearly')),
-        description TEXT,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-
-    console.log('Database tables initialized successfully');
+    console.log("Database connected & tables initialized");
   } catch (error) {
-    console.error('Error initializing database:', error);
+    console.error("Error initializing database:", error);
     throw error;
   }
 }

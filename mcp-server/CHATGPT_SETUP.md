@@ -12,10 +12,18 @@ This guide explains how to connect your Budget Track MCP server to ChatGPT using
 
 ChatGPT now supports direct MCP server connections! This is the easiest way to connect.
 
-### Step 1: Deploy Your Server
+### Step 1: Get Your MCP Token (Required)
 
-1. Deploy your MCP server to production (see [DEPLOYMENT.md](./DEPLOYMENT.md))
-2. Get your production URL (e.g., `https://your-server.com`)
+**IMPORTANT**: You must verify your identity before connecting to ensure your data is linked to your account.
+
+1. **Log into your Budget Tracker web app**
+2. **Navigate to `/mcp-connection`** (or Settings → MCP Connection)
+3. **Click "Send Verification Code"**
+   - A 6-digit code will be sent to your email
+4. **Enter the verification code** from your email
+5. **Copy the MCP Server URL** (it includes your unique token)
+
+> **Note**: The token ensures your ChatGPT session is linked to your account. Without it, the server uses a default user ID.
 
 ### Step 2: Connect in ChatGPT
 
@@ -23,8 +31,9 @@ ChatGPT now supports direct MCP server connections! This is the easiest way to c
 2. Fill in the form:
    - **Name**: "Budget Tracker" or "Personal Finance Assistant"
    - **Description**: "Helps you track expenses, income, and manage your budget"
-   - **MCP Server URL**: `https://your-server.com/sse`
-   - **Authentication**: Leave as "OAuth" (or configure if you have OAuth set up)
+   - **MCP Server URL**: Paste the URL from Step 1 (includes your token)
+     - Format: `https://your-server.com/sse?token=YOUR_TOKEN`
+   - **Authentication**: Set to **"No Auth"**
 3. Check the consent checkbox: "I understand and want to continue"
 4. Click **"Create"**
 
@@ -35,6 +44,12 @@ Once connected, try these prompts:
 - "Show me my recent expenses"
 - "What's my budget summary?"
 - "Add a monthly income of $5000 from my salary"
+
+### Token Expiration
+
+- MCP tokens expire after **30 days**
+- If your connection stops working, generate a new token from `/mcp-connection`
+- Each user gets their own token linked to their account
 
 ## Option 2: Custom GPT (Alternative)
 

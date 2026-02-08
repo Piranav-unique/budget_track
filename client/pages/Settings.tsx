@@ -14,6 +14,7 @@ import {
   Mail,
   Smartphone,
   Edit2,
+  Key,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -323,6 +324,17 @@ function SettingsContent() {
             onClick={handleExport}
             action={loading ? <span className="text-xs text-muted-foreground">Exporting...</span> : null}
           />
+        </SettingGroup>
+
+        {/* Integrations */}
+        <SettingGroup title="Integrations">
+          <Link to="/mcp-connection">
+            <SettingItem
+              icon={Key}
+              label="ChatGPT MCP Connection"
+              subLabel="Connect your Budget Tracker to ChatGPT"
+            />
+          </Link>
         </SettingGroup>
 
         {/* App Settings */}

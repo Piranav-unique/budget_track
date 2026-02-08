@@ -6,6 +6,7 @@ import { handleCategorizeExpense } from "./routes/categorize-expense";
 import { handleCreateExpense, handleListExpenses, handleUpdateExpense, handleDeleteExpense } from "./routes/expenses";
 import { handleCreateIncome, handleListIncome, handleUpdateIncome, handleDeleteIncome } from "./routes/income";
 import { handleGetAIInsights, handleGetQuickInsight, handleSuggestBudget } from "./routes/ai-insights";
+import { handleRequestOTP, handleVerifyOTP, handleTokenStatus, handleVerifyToken } from "./routes/mcp-auth";
 import { setupAuth } from "./auth";
 import { initDb } from "./db";
 
@@ -44,6 +45,12 @@ export function createServer() {
   app.post("/api/ai-insights", handleGetAIInsights);
   app.post("/api/ai-insights/quick", handleGetQuickInsight);
   app.post("/api/ai-insights/suggest", handleSuggestBudget);
+
+  // MCP Authentication endpoints
+  app.post("/api/mcp/request-otp", handleRequestOTP);
+  app.post("/api/mcp/verify-otp", handleVerifyOTP);
+  app.get("/api/mcp/token-status", handleTokenStatus);
+  app.get("/api/mcp/verify-token", handleVerifyToken);
 
   // Initialize DB tables
   initDb().catch((error) => {

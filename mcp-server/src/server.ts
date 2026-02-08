@@ -595,20 +595,56 @@ paths:
 
 // SSE endpoint for ChatGPT MCP connection
 // Handle both GET (SSE streaming) and POST (JSON-RPC) requests
-app.get('/sse', (req, res) => {
+app.get('/sse', async (req, res) => {
+    // Get token from query parameter or Authorization header
+    const token = req.query.token as string || req.headers.authorization?.replace('Bearer ', '');
+    
+    // Validate token is provided
+    if (!token) {
+        res.status(401);
+        res.write('data: ' + JSON.stringify({
+            jsonrpc: '2.0',
+            id: null,
+            error: {
+                code: -32001,
+                message: 'Authentication required: MCP token is missing. Please provide a valid token in the URL query parameter (?token=...) or Authorization header.'
+            }
+        }) + '\n\n');
+        res.end();
+        return;
+    }
+
+    // Validate token is valid
+    const tokenInfo = await getUserIdFromToken(token);
+    if (!tokenInfo.userId) {
+        res.status(401);
+        res.write('data: ' + JSON.stringify({
+            jsonrpc: '2.0',
+            id: null,
+            error: {
+                code: -32001,
+                message: 'Invalid or expired MCP token. Please generate a new token from your Budget Tracker account.'
+            }
+        }) + '\n\n');
+        res.end();
+        return;
+    }
+
+    console.log(`✅ SSE connection established for user: ${tokenInfo.email || tokenInfo.username} (ID: ${tokenInfo.userId})`);
+    
     // Set headers for SSE
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Headers', 'Cache-Control');
+    res.setHeader('Access-Control-Allow-Headers', 'Cache-Control, Authorization');
 
     // Send initial connection message
     res.write(': connected\n\n');
 
     // Handle incoming messages from client
     let buffer = '';
-    req.on('data', (chunk: Buffer) => {
+    req.on('data', async (chunk: Buffer) => {
         buffer += chunk.toString();
         const lines = buffer.split('\n');
         buffer = lines.pop() || '';
@@ -618,15 +654,15 @@ app.get('/sse', (req, res) => {
                 try {
                     const jsonStr = line.substring(6); // Remove 'data: ' prefix
                     const message = JSON.parse(jsonStr);
-                    // Handle MCP protocol messages
-                    handleMCPMessage(message, res);
+                    // Handle MCP protocol messages with token
+                    await handleMCPMessage(message, res, token);
                 } catch (error) {
                     console.error('Error parsing SSE message:', error);
                 }
             } else if (line.trim()) {
                 try {
                     const message = JSON.parse(line);
-                    handleMCPMessage(message, res);
+                    await handleMCPMessage(message, res, token);
                 } catch (error) {
                     console.error('Error parsing message:', error);
                 }
@@ -639,10 +675,79 @@ app.get('/sse', (req, res) => {
     });
 });
 
+// Token validation helper
+async function getUserIdFromToken(token?: string): Promise<{ userId: number | null; email?: string; username?: string }> {
+    if (!token) {
+        console.warn('⚠️  MCP request without token - will use default user_id=1');
+        return { userId: null };
+    }
+    
+    try {
+        const result = await pool.query(
+            `SELECT mcp_tokens.user_id, users.email, users.username 
+             FROM mcp_tokens
+             JOIN users ON mcp_tokens.user_id = users.id
+             WHERE mcp_tokens.token = $1 AND mcp_tokens.expires_at > NOW()
+             LIMIT 1`,
+            [token]
+        );
+        
+        if (result.rows.length === 0) {
+            console.warn(`⚠️  Invalid or expired token: ${token.substring(0, 10)}... - will use default user_id=1`);
+            return { userId: null };
+        }
+        
+        const userInfo = result.rows[0];
+        console.log(`✅ Token validated - User: ${userInfo.email || userInfo.username} (ID: ${userInfo.user_id})`);
+        return { 
+            userId: userInfo.user_id,
+            email: userInfo.email,
+            username: userInfo.username
+        };
+    } catch (error) {
+        console.error('Error validating token:', error);
+        return { userId: null };
+    }
+}
+
 // Handle MCP protocol messages over SSE
-async function handleMCPMessage(message: any, res: express.Response) {
+async function handleMCPMessage(message: any, res: express.Response, token?: string) {
     try {
         let response: any;
+        
+        // Get user ID from token (REQUIRED)
+        if (!token) {
+            const errorResponse = {
+                jsonrpc: '2.0',
+                id: message.id,
+                error: {
+                    code: -32001,
+                    message: 'Authentication required: MCP token is missing. Please provide a valid token in the URL query parameter (?token=...) or Authorization header.'
+                }
+            };
+            res.write(`data: ${JSON.stringify(errorResponse)}\n\n`);
+            return;
+        }
+
+        const tokenInfo = await getUserIdFromToken(token);
+        
+        if (!tokenInfo.userId) {
+            const errorResponse = {
+                jsonrpc: '2.0',
+                id: message.id,
+                error: {
+                    code: -32001,
+                    message: 'Invalid or expired MCP token. Please generate a new token from your Budget Tracker account.'
+                }
+            };
+            res.write(`data: ${JSON.stringify(errorResponse)}\n\n`);
+            return;
+        }
+        
+        const defaultUserId = tokenInfo.userId;
+        
+        // Log which user is being used
+        console.log(`📝 MCP request from user: ${tokenInfo.email || tokenInfo.username} (ID: ${tokenInfo.userId})`);
 
         // Handle MCP initialize method
         if (message.method === 'initialize') {
@@ -815,6 +920,38 @@ async function handleMCPMessage(message: any, res: express.Response) {
 // POST endpoint for MCP messages (alternative to SSE for some clients)
 app.post('/sse', express.json(), async (req, res) => {
     try {
+        // Get token from query parameter or Authorization header (REQUIRED)
+        const token = (req.query.token as string) || req.headers.authorization?.replace('Bearer ', '');
+        
+        if (!token) {
+            return res.status(401).json({
+                jsonrpc: '2.0',
+                id: req.body.id,
+                error: {
+                    code: -32001,
+                    message: 'Authentication required: MCP token is missing. Please provide a valid token in the URL query parameter (?token=...) or Authorization header.'
+                }
+            });
+        }
+
+        const tokenInfo = await getUserIdFromToken(token);
+        
+        if (!tokenInfo.userId) {
+            return res.status(401).json({
+                jsonrpc: '2.0',
+                id: req.body.id,
+                error: {
+                    code: -32001,
+                    message: 'Invalid or expired MCP token. Please generate a new token from your Budget Tracker account.'
+                }
+            });
+        }
+        
+        const defaultUserId = tokenInfo.userId;
+        
+        // Log which user is being used
+        console.log(`📝 MCP POST request from user: ${tokenInfo.email || tokenInfo.username} (ID: ${tokenInfo.userId})`);
+        
         const message = req.body;
         let response: any;
 
@@ -914,7 +1051,7 @@ app.post('/sse', express.json(), async (req, res) => {
             switch (name) {
                 case "list_expenses": {
                     const limit = (args?.limit as number) || 10;
-                    const expenses = await handleListExpenses(userId, limit);
+                    const expenses = await handleListExpenses(defaultUserId, limit);
                     result = {
                         content: [{ type: "text", text: JSON.stringify(expenses, null, 2) }],
                     };
@@ -922,14 +1059,14 @@ app.post('/sse', express.json(), async (req, res) => {
                 }
                 case "add_expense": {
                     const { description, amount, category, note } = args as any;
-                    const expense = await handleAddExpense(userId, description, amount, category, note);
+                    const expense = await handleAddExpense(defaultUserId, description, amount, category, note);
                     result = {
                         content: [{ type: "text", text: `Expense added: ${JSON.stringify(expense, null, 2)}` }],
                     };
                     break;
                 }
                 case "list_income": {
-                    const income = await handleListIncome(userId);
+                    const income = await handleListIncome(defaultUserId);
                     result = {
                         content: [{ type: "text", text: JSON.stringify(income, null, 2) }],
                     };
@@ -937,14 +1074,14 @@ app.post('/sse', express.json(), async (req, res) => {
                 }
                 case "add_income": {
                     const { name: incomeName, amount, frequency, description } = args as any;
-                    const income = await handleAddIncome(userId, incomeName, amount, frequency, description);
+                    const income = await handleAddIncome(defaultUserId, incomeName, amount, frequency, description);
                     result = {
                         content: [{ type: "text", text: `Income added: ${JSON.stringify(income, null, 2)}` }],
                     };
                     break;
                 }
                 case "get_budget_summary": {
-                    const summary = await handleGetBudgetSummary(userId);
+                    const summary = await handleGetBudgetSummary(defaultUserId);
                     result = {
                         content: [{ type: "text", text: JSON.stringify(summary, null, 2) }],
                     };

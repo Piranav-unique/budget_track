@@ -82,6 +82,44 @@ export async function initDb() {
       );
     `);
 
+    // Create MCP OTP codes table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS mcp_otp_codes (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        email VARCHAR(255) NOT NULL,
+        code VARCHAR(6) NOT NULL,
+        expires_at TIMESTAMP NOT NULL,
+        used BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+    `);
+
+    // Create MCP tokens table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS mcp_tokens (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        token VARCHAR(255) UNIQUE NOT NULL,
+        expires_at TIMESTAMP NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+    `);
+
+    // Create indexes for faster lookups
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_mcp_otp_user_email ON mcp_otp_codes(user_id, email);
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_mcp_otp_code ON mcp_otp_codes(code);
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_mcp_tokens_token ON mcp_tokens(token);
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_mcp_tokens_user ON mcp_tokens(user_id);
+    `);
+
     console.log("Database connected & tables initialized");
   } catch (error) {
     console.error("Error initializing database:", error);

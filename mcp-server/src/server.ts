@@ -1057,6 +1057,7 @@ app.post('/sse', express.json(), async (req, res) => {
                 }
             };
         } else if (message.method === 'tools/list') {
+            console.log('📋 Handling tools/list via POST');
             // Return tools list (user is determined from token, so no userId in schema)
             response = {
                 jsonrpc: '2.0',
@@ -1187,6 +1188,14 @@ app.post('/sse', express.json(), async (req, res) => {
         }
 
         console.log(`📤 Sending POST response for ${message.method} (id: ${message.id})`);
+        console.log('📤 Full response:', JSON.stringify(response, null, 2));
+        
+        // Set proper headers
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+        
         res.json(response);
     } catch (error) {
         console.error('❌ Error handling POST request:', error);

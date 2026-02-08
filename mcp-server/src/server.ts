@@ -186,6 +186,18 @@ app.get('/health', (req, res) => {
     res.json({ status: 'ok', service: 'budget-track-mcp-server' });
 });
 
+// MCP server info endpoint (for validation)
+app.get('/mcp/info', (req, res) => {
+    res.json({
+        name: 'budget-track-mcp-server',
+        version: '1.0.0',
+        protocolVersion: '2024-11-05',
+        capabilities: {
+            tools: {}
+        }
+    });
+});
+
 // Tool handlers (same logic as index.ts)
 async function handleListExpenses(userId: number, limit: number = 10) {
     const result = await pool.query(

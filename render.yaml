@@ -17,3 +17,17 @@ services:
         sync: false
       - key: NODE_ENV
         value: production
+
+  - type: web
+    name: budget-track-mcp-server
+    env: node
+    rootDir: mcp-server
+    buildCommand: npm install && npm run build
+    startCommand: npm run start:prod
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001

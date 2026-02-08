@@ -1,0 +1,251 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Budget Track API",
+    "description": "API for managing personal budget, expenses, and income tracking",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://your-production-url.com",
+      "description": "Production server"
+    }
+  ],
+  "paths": {
+    "/mcp/tools": {
+      "get": {
+        "summary": "List available budget tracking tools",
+        "operationId": "listTools",
+        "responses": {
+          "200": {
+            "description": "List of available tools",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "tools": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mcp/tools/call": {
+      "post": {
+        "summary": "Call a budget tracking tool",
+        "operationId": "callTool",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "enum": ["list_expenses", "add_expense", "list_income", "add_income", "get_budget_summary"],
+                    "description": "The name of the tool to call"
+                  },
+                  "arguments": {
+                    "type": "object",
+                    "description": "Arguments for the tool"
+                  }
+                },
+                "required": ["name"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tool execution result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/expenses": {
+      "get": {
+        "summary": "List expenses",
+        "operationId": "listExpenses",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            },
+            "description": "User ID"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            },
+            "description": "Number of expenses to return"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of expenses",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Add a new expense",
+        "operationId": "addExpense",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "description": {
+                    "type": "string",
+                    "description": "What was the expense for?"
+                  },
+                  "amount": {
+                    "type": "number",
+                    "description": "How much was spent?"
+                  },
+                  "category": {
+                    "type": "string",
+                    "description": "Expense category",
+                    "default": "other"
+                  },
+                  "note": {
+                    "type": "string",
+                    "description": "Optional note"
+                  },
+                  "userId": {
+                    "type": "integer",
+                    "default": 1
+                  }
+                },
+                "required": ["description", "amount"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Expense added successfully"
+          }
+        }
+      }
+    },
+    "/api/income": {
+      "get": {
+        "summary": "List income sources",
+        "operationId": "listIncome",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of income sources"
+          }
+        }
+      },
+      "post": {
+        "summary": "Add a new income source",
+        "operationId": "addIncome",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Name of the income source"
+                  },
+                  "amount": {
+                    "type": "number",
+                    "description": "Amount of income"
+                  },
+                  "frequency": {
+                    "type": "string",
+                    "enum": ["monthly", "weekly", "bi-weekly", "yearly"],
+                    "default": "monthly"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "userId": {
+                    "type": "integer",
+                    "default": 1
+                  }
+                },
+                "required": ["name", "amount"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Income added successfully"
+          }
+        }
+      }
+    },
+    "/api/budget/summary": {
+      "get": {
+        "summary": "Get budget summary",
+        "operationId": "getBudgetSummary",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Budget summary with income, expenses, and balance"
+          }
+        }
+      }
+    }
+  }
+}
+

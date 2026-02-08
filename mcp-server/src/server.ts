@@ -930,13 +930,34 @@ async function handleMCPMessage(message: any, res: express.Response, token?: str
                 id: message.id,
                 result: result
             };
+        } else if (message.method === 'notifications/initialized') {
+            // Handle initialized notification (no response needed for notifications, but we'll acknowledge)
+            console.log('✅ Client initialized notification received (SSE)');
+            // Notifications typically don't require a response, but we'll send an empty result
+            response = {
+                jsonrpc: '2.0',
+                id: message.id || null,
+                result: {}
+            };
+        } else if (message.method === 'resources/list') {
+            // Handle resources/list - return empty list (we don't use resources)
+            console.log('📦 Handling resources/list request (SSE)');
+            response = {
+                jsonrpc: '2.0',
+                id: message.id,
+                result: {
+                    resources: []
+                }
+            };
+            console.log('✅ Resources list prepared (empty)');
         } else {
+            console.warn(`⚠️  Unknown method in SSE: ${message.method}`);
             response = {
                 jsonrpc: '2.0',
                 id: message.id,
                 error: {
                     code: -32601,
-                    message: 'Method not found'
+                    message: `Method not found: ${message.method}`
                 }
             };
         }

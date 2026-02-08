@@ -1186,13 +1186,35 @@ app.post('/sse', express.json(), async (req, res) => {
                 id: message.id,
                 result: result
             };
+            console.log(`✅ Tool call response prepared for: ${name}`);
+        } else if (message.method === 'notifications/initialized') {
+            // Handle initialized notification (no response needed, but we'll acknowledge it)
+            console.log('✅ Client initialized notification received');
+            // Notifications don't require a response, but ChatGPT might expect one
+            response = {
+                jsonrpc: '2.0',
+                id: message.id || null,
+                result: {}
+            };
+        } else if (message.method === 'resources/list') {
+            // Handle resources/list - return empty list (we don't use resources)
+            console.log('📦 Handling resources/list request');
+            response = {
+                jsonrpc: '2.0',
+                id: message.id,
+                result: {
+                    resources: []
+                }
+            };
+            console.log('✅ Resources list prepared (empty)');
         } else {
+            console.warn(`⚠️  Unknown method in POST: ${message.method}`);
             response = {
                 jsonrpc: '2.0',
                 id: message.id,
                 error: {
                     code: -32601,
-                    message: 'Method not found'
+                    message: `Method not found: ${message.method}`
                 }
             };
         }

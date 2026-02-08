@@ -16,38 +16,40 @@ export async function handleRequestOTP(req: Request, res: Response) {
 
         const user = req.user as any;
         if (!user.email) {
-            return res.status(400).json({ 
-                error: 'Email address required. Please update your profile with an email address.' 
+            return res.status(400).json({
+                error: 'Email address required. Please update your profile with an email address.'
             });
         }
 
         // Generate and send OTP
         const code = await otpService.createOTP(user.id, user.email);
-        
+
+        // Check if SMTP is configured by checking if email service has a transporter
+        const smtpConfigured = !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+        let emailSent = false;
+
         try {
             await emailService.sendOTP(user.email, code, user.display_name || user.username);
-            
-            // Check if SMTP is configured (if not, email service will log to console)
-            const smtpConfigured = !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
-            
-            res.json({ 
-                message: smtpConfigured 
-                    ? 'OTP code sent to your email address' 
+            // If we reach here without error, email was sent (or logged to console in dev mode)
+            emailSent = smtpConfigured; // Only mark as sent if SMTP is configured
+
+            res.json({
+                message: smtpConfigured
+                    ? 'OTP code sent to your email address'
                     : 'OTP code generated (check server console - SMTP not configured)',
-                email: user.email, // Return masked email for confirmation
+                email: user.email,
                 // In development mode (SMTP not configured), include OTP in response
-                // This is safe because it's only shown if SMTP is not configured
-                ...(smtpConfigured ? {} : { 
+                ...(!smtpConfigured ? {
                     developmentMode: true,
                     otpCode: code,
                     note: 'SMTP is not configured. OTP is shown here for development only. Configure SMTP to send real emails.'
-                })
+                } : {})
             });
         } catch (error) {
             // If email sending fails but we have the code, still return success
             // The code is logged to console as fallback
             console.error('Email sending failed, but OTP code is:', code);
-            res.json({ 
+            res.json({
                 message: 'OTP code generated (email sending failed - check server logs)',
                 email: user.email,
                 developmentMode: true,
@@ -57,8 +59,8 @@ export async function handleRequestOTP(req: Request, res: Response) {
         }
     } catch (error) {
         console.error('Error requesting OTP:', error);
-        res.status(500).json({ 
-            error: error instanceof Error ? error.message : 'Failed to send OTP' 
+        res.status(500).json({
+            error: error instanceof Error ? error.message : 'Failed to send OTP'
         });
     }
 }
@@ -91,7 +93,7 @@ export async function handleVerifyOTP(req: Request, res: Response) {
 
         console.log(`✅ MCP token generated for user: ${user.email || user.username} (ID: ${user.id})`);
 
-        res.json({ 
+        res.json({
             token,
             message: 'MCP connection verified. Use this token in ChatGPT.',
             expiresIn: '30 days',
@@ -100,8 +102,8 @@ export async function handleVerifyOTP(req: Request, res: Response) {
         });
     } catch (error) {
         console.error('Error verifying OTP:', error);
-        res.status(500).json({ 
-            error: error instanceof Error ? error.message : 'Failed to verify OTP' 
+        res.status(500).json({
+            error: error instanceof Error ? error.message : 'Failed to verify OTP'
         });
     }
 }
@@ -117,7 +119,7 @@ export async function handleTokenStatus(req: Request, res: Response) {
         }
 
         const user = req.user as any;
-        
+
         // Check if user has email
         if (!user.email) {
             return res.json({
@@ -142,14 +144,14 @@ export async function handleTokenStatus(req: Request, res: Response) {
             userEmail: user.email,
             username: user.username,
             userId: user.id,
-            message: hasActiveToken 
-                ? 'You have an active MCP token' 
+            message: hasActiveToken
+                ? 'You have an active MCP token'
                 : 'Request OTP to generate a new MCP token'
         });
     } catch (error) {
         console.error('Error getting token status:', error);
-        res.status(500).json({ 
-            error: error instanceof Error ? error.message : 'Failed to get token status' 
+        res.status(500).json({
+            error: error instanceof Error ? error.message : 'Failed to get token status'
         });
     }
 }
@@ -165,15 +167,15 @@ export async function handleCheckEmail(req: Request, res: Response) {
         }
 
         const availability = await emailService.checkEmailAvailability();
-        
+
         res.json({
             ...availability,
-            message: availability.configured 
-                ? (availability.connectionTest 
-                    ? 'SMTP is configured and connection test passed' 
+            message: availability.configured
+                ? (availability.connectionTest
+                    ? 'SMTP is configured and connection test passed'
                     : 'SMTP is configured but connection test failed')
                 : 'SMTP is not configured',
-            instructions: !availability.configured 
+            instructions: !availability.configured
                 ? 'See EMAIL_SETUP.md for Gmail SMTP configuration'
                 : undefined,
         });
@@ -198,14 +200,14 @@ export async function handleTestEmail(req: Request, res: Response) {
 
         const user = req.user as any;
         if (!user.email) {
-            return res.status(400).json({ 
-                error: 'Email address required. Please update your profile with an email address.' 
+            return res.status(400).json({
+                error: 'Email address required. Please update your profile with an email address.'
             });
         }
 
         // First check email availability
         const availability = await emailService.checkEmailAvailability();
-        
+
         if (!availability.configured) {
             return res.status(400).json({
                 error: 'SMTP is not configured',
@@ -273,7 +275,7 @@ export async function handleVerifyToken(req: Request, res: Response) {
         );
 
         if (result.rows.length === 0) {
-            return res.status(404).json({ 
+            return res.status(404).json({
                 error: 'Token not found or expired',
                 valid: false
             });
@@ -293,8 +295,8 @@ export async function handleVerifyToken(req: Request, res: Response) {
         });
     } catch (error) {
         console.error('Error verifying token:', error);
-        res.status(500).json({ 
-            error: error instanceof Error ? error.message : 'Failed to verify token' 
+        res.status(500).json({
+            error: error instanceof Error ? error.message : 'Failed to verify token'
         });
     }
 }

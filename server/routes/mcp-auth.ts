@@ -155,6 +155,52 @@ export async function handleTokenStatus(req: Request, res: Response) {
 }
 
 /**
+ * Test email sending (for debugging SMTP configuration)
+ * POST /api/mcp/test-email
+ */
+export async function handleTestEmail(req: Request, res: Response) {
+    try {
+        if (!req.isAuthenticated()) {
+            return res.status(401).json({ error: 'Not authenticated' });
+        }
+
+        const user = req.user as any;
+        if (!user.email) {
+            return res.status(400).json({ 
+                error: 'Email address required. Please update your profile with an email address.' 
+            });
+        }
+
+        // Check if SMTP is configured
+        const smtpConfigured = !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+        if (!smtpConfigured) {
+            return res.status(400).json({
+                error: 'SMTP is not configured',
+                message: 'Please set SMTP_HOST, SMTP_USER, and SMTP_PASS environment variables',
+                instructions: 'See EMAIL_SETUP.md for Gmail SMTP configuration'
+            });
+        }
+
+        // Send a test email
+        const testCode = '123456';
+        await emailService.sendOTP(user.email, testCode, user.display_name || user.username);
+
+        res.json({
+            success: true,
+            message: `Test email sent to ${user.email}`,
+            note: 'Check your inbox (and spam folder) for the test email'
+        });
+    } catch (error) {
+        console.error('Error sending test email:', error);
+        res.status(500).json({
+            error: 'Failed to send test email',
+            message: error instanceof Error ? error.message : 'Unknown error',
+            details: 'Check your SMTP configuration and server logs'
+        });
+    }
+}
+
+/**
  * Verify which account a token belongs to (for debugging)
  * GET /api/mcp/verify-token?token=...
  */

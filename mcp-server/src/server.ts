@@ -962,16 +962,19 @@ async function handleMCPMessage(message: any, res: express.Response, token?: str
     }
 }
 
-// POST endpoint for MCP messages (alternative to SSE for some clients)
+// POST endpoint for MCP messages (ChatGPT uses POST for MCP protocol)
 app.post('/sse', express.json(), async (req, res) => {
     try {
         // Get token from query parameter or Authorization header (REQUIRED)
         const token = (req.query.token as string) || req.headers.authorization?.replace('Bearer ', '');
         
+        console.log(`📥 POST /sse request - Method: ${req.body?.method}, ID: ${req.body?.id}`);
+        
         if (!token) {
+            console.error('❌ No token provided in POST request');
             return res.status(401).json({
                 jsonrpc: '2.0',
-                id: req.body.id,
+                id: req.body?.id || null,
                 error: {
                     code: -32001,
                     message: 'Authentication required: MCP token is missing. Please provide a valid token in the URL query parameter (?token=...) or Authorization header.'
@@ -982,9 +985,10 @@ app.post('/sse', express.json(), async (req, res) => {
         const tokenInfo = await getUserIdFromToken(token);
         
         if (!tokenInfo.userId) {
+            console.error(`❌ Invalid token: ${token.substring(0, 10)}...`);
             return res.status(401).json({
                 jsonrpc: '2.0',
-                id: req.body.id,
+                id: req.body?.id || null,
                 error: {
                     code: -32001,
                     message: 'Invalid or expired MCP token. Please generate a new token from your Budget Tracker account.'
@@ -995,9 +999,24 @@ app.post('/sse', express.json(), async (req, res) => {
         const defaultUserId = tokenInfo.userId;
         
         // Log which user is being used
-        console.log(`📝 MCP POST request from user: ${tokenInfo.email || tokenInfo.username} (ID: ${tokenInfo.userId})`);
+        console.log(`✅ MCP POST request authenticated - User: ${tokenInfo.email || tokenInfo.username} (ID: ${tokenInfo.userId})`);
         
         const message = req.body;
+        
+        if (!message || !message.method) {
+            console.error('❌ Invalid message format:', message);
+            return res.status(400).json({
+                jsonrpc: '2.0',
+                id: message?.id || null,
+                error: {
+                    code: -32600,
+                    message: 'Invalid Request: Missing method'
+                }
+            });
+        }
+        
+        console.log(`📨 Processing MCP method: ${message.method} (id: ${message.id})`);
+        
         let response: any;
 
         // Handle MCP initialize method
@@ -1080,7 +1099,9 @@ app.post('/sse', express.json(), async (req, res) => {
                     ],
                 }
             };
+            console.log(`✅ Tools list prepared (${response.result.tools.length} tools)`);
         } else if (message.method === 'tools/call') {
+            console.log(`🔨 Handling tools/call via POST: ${message.params?.name}`);
             // Handle tool call - use defaultUserId from token (already validated)
             const { name, arguments: args } = message.params;
             let result: any;
@@ -1144,16 +1165,20 @@ app.post('/sse', express.json(), async (req, res) => {
             };
         }
 
+        console.log(`📤 Sending POST response for ${message.method} (id: ${message.id})`);
         res.json(response);
     } catch (error) {
-        res.status(500).json({
+        console.error('❌ Error handling POST request:', error);
+        const errorResponse = {
             jsonrpc: '2.0',
-            id: req.body.id,
+            id: req.body?.id || null,
             error: {
                 code: -32000,
-                message: error instanceof Error ? error.message : String(error)
+                message: error instanceof Error ? error.message : 'Internal server error'
             }
-        });
+        };
+        console.log(`📤 Sending error response:`, JSON.stringify(errorResponse, null, 2));
+        res.status(500).json(errorResponse);
     }
 });
 

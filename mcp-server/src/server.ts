@@ -198,6 +198,17 @@ app.get('/mcp/info', (req, res) => {
     });
 });
 
+// Logo endpoint (ChatGPT may try to fetch this)
+app.get('/logo', (req, res) => {
+    // Return a simple SVG logo or 204 No Content
+    res.status(204).end();
+});
+
+// Handle connector logo requests (ChatGPT pattern)
+app.get('/backend-api/aip/connectors/:connectorId/logo', (req, res) => {
+    res.status(204).end();
+});
+
 // Tool handlers (same logic as index.ts)
 async function handleListExpenses(userId: number, limit: number = 10) {
     const result = await pool.query(

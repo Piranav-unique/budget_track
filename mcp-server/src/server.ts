@@ -766,87 +766,79 @@ async function handleMCPMessage(message: any, res: express.Response, token?: str
                 }
             };
         } else if (message.method === 'tools/list') {
-            // Get tools list
-            const toolsResponse = {
-                tools: [
-                    {
-                        name: "list_expenses",
-                        description: "List recent expenses for the user",
-                        inputSchema: {
-                            type: "object",
-                            properties: {
-                                limit: { type: "number", description: "Number of expenses to return", default: 10 },
-                                userId: { type: "number", description: "User ID (defaults to 1 if not specified)", default: 1 }
-                            },
-                        },
-                    },
-                    {
-                        name: "add_expense",
-                        description: "Add a new expense entry",
-                        inputSchema: {
-                            type: "object",
-                            properties: {
-                                description: { type: "string", description: "What was the expense for?" },
-                                amount: { type: "number", description: "How much was spent?" },
-                                category: { type: "string", description: "Expense category (e.g., food, transport, bills)", default: "other" },
-                                note: { type: "string", description: "Optional note about the expense" },
-                                userId: { type: "number", description: "User ID (defaults to 1 if not specified)", default: 1 }
-                            },
-                            required: ["description", "amount"],
-                        },
-                    },
-                    {
-                        name: "list_income",
-                        description: "List recent income sources",
-                        inputSchema: {
-                            type: "object",
-                            properties: {
-                                userId: { type: "number", description: "User ID (defaults to 1 if not specified)", default: 1 }
-                            },
-                        },
-                    },
-                    {
-                        name: "add_income",
-                        description: "Add a new income source",
-                        inputSchema: {
-                            type: "object",
-                            properties: {
-                                name: { type: "string", description: "Name of the income source (e.g., Salary, Freelance)" },
-                                amount: { type: "number", description: "Amount of income" },
-                                frequency: { type: "string", enum: ["monthly", "weekly", "bi-weekly", "yearly"], default: "monthly" },
-                                description: { type: "string", description: "Optional description" },
-                                userId: { type: "number", description: "User ID (defaults to 1 if not specified)", default: 1 }
-                            },
-                            required: ["name", "amount"],
-                        },
-                    },
-                    {
-                        name: "get_budget_summary",
-                        description: "Provides a summary of total income, total expenses, and balance",
-                        inputSchema: {
-                            type: "object",
-                            properties: {
-                                userId: { type: "number", description: "User ID (defaults to 1 if not specified)", default: 1 }
-                            },
-                        },
-                    },
-                ],
-            };
+            // Get tools list (user is determined from token, so no userId in schema)
             response = {
                 jsonrpc: '2.0',
                 id: message.id,
-                result: toolsResponse
+                result: {
+                    tools: [
+                        {
+                            name: "list_expenses",
+                            description: "List recent expenses for the authenticated user",
+                            inputSchema: {
+                                type: "object",
+                                properties: {
+                                    limit: { type: "number", description: "Number of expenses to return (default: 10)", default: 10 }
+                                },
+                            },
+                        },
+                        {
+                            name: "add_expense",
+                            description: "Add a new expense entry for the authenticated user",
+                            inputSchema: {
+                                type: "object",
+                                properties: {
+                                    description: { type: "string", description: "What was the expense for?" },
+                                    amount: { type: "number", description: "How much was spent?" },
+                                    category: { type: "string", description: "Expense category (e.g., food, transport, bills)", default: "other" },
+                                    note: { type: "string", description: "Optional note about the expense" }
+                                },
+                                required: ["description", "amount"],
+                            },
+                        },
+                        {
+                            name: "list_income",
+                            description: "List recent income sources for the authenticated user",
+                            inputSchema: {
+                                type: "object",
+                                properties: {},
+                            },
+                        },
+                        {
+                            name: "add_income",
+                            description: "Add a new income source for the authenticated user",
+                            inputSchema: {
+                                type: "object",
+                                properties: {
+                                    name: { type: "string", description: "Name of the income source (e.g., Salary, Freelance)" },
+                                    amount: { type: "number", description: "Amount of income" },
+                                    frequency: { type: "string", enum: ["monthly", "weekly", "bi-weekly", "yearly"], default: "monthly" },
+                                    description: { type: "string", description: "Optional description" }
+                                },
+                                required: ["name", "amount"],
+                            },
+                        },
+                        {
+                            name: "get_budget_summary",
+                            description: "Provides a summary of total income, total expenses, and balance for the authenticated user",
+                            inputSchema: {
+                                type: "object",
+                                properties: {},
+                            },
+                        },
+                    ],
+                },
             };
         } else if (message.method === 'tools/call') {
-            // Handle tool call
+            // Handle tool call - use userId from token (already validated)
             const { name, arguments: args } = message.params;
-            const userId = (args?.userId as number) || 1;
+            // Use defaultUserId which is determined from token
             let result: any;
 
             switch (name) {
                 case "list_expenses": {
                     const limit = (args?.limit as number) || 10;
-                    const expenses = await handleListExpenses(userId, limit);
+                    const expenses = await handleListExpenses(defaultUserId, limit);
                     result = {
                         content: [{ type: "text", text: JSON.stringify(expenses, null, 2) }],
                     };
@@ -854,14 +846,14 @@ async function handleMCPMessage(message: any, res: express.Response, token?: str
                 }
                 case "add_expense": {
                     const { description, amount, category, note } = args as any;
-                    const expense = await handleAddExpense(userId, description, amount, category, note);
+                    const expense = await handleAddExpense(defaultUserId, description, amount, category, note);
                     result = {
                         content: [{ type: "text", text: `Expense added: ${JSON.stringify(expense, null, 2)}` }],
                     };
                     break;
                 }
                 case "list_income": {
-                    const income = await handleListIncome(userId);
+                    const income = await handleListIncome(defaultUserId);
                     result = {
                         content: [{ type: "text", text: JSON.stringify(income, null, 2) }],
                     };
@@ -869,14 +861,14 @@ async function handleMCPMessage(message: any, res: express.Response, token?: str
                 }
                 case "add_income": {
                     const { name: incomeName, amount, frequency, description } = args as any;
-                    const income = await handleAddIncome(userId, incomeName, amount, frequency, description);
+                    const income = await handleAddIncome(defaultUserId, incomeName, amount, frequency, description);
                     result = {
                         content: [{ type: "text", text: `Income added: ${JSON.stringify(income, null, 2)}` }],
                     };
                     break;
                 }
                 case "get_budget_summary": {
-                    const summary = await handleGetBudgetSummary(userId);
+                    const summary = await handleGetBudgetSummary(defaultUserId);
                     result = {
                         content: [{ type: "text", text: JSON.stringify(summary, null, 2) }],
                     };
@@ -972,7 +964,7 @@ app.post('/sse', express.json(), async (req, res) => {
                 }
             };
         } else if (message.method === 'tools/list') {
-            // Return tools list (same as GET /mcp/tools)
+            // Return tools list (user is determined from token, so no userId in schema)
             response = {
                 jsonrpc: '2.0',
                 id: message.id,
@@ -980,72 +972,64 @@ app.post('/sse', express.json(), async (req, res) => {
                     tools: [
                         {
                             name: "list_expenses",
-                            description: "List recent expenses for the user",
+                            description: "List recent expenses for the authenticated user",
                             inputSchema: {
                                 type: "object",
                                 properties: {
-                                    limit: { type: "number", description: "Number of expenses to return", default: 10 },
-                                    userId: { type: "number", description: "User ID (defaults to 1 if not specified)", default: 1 }
+                                    limit: { type: "number", description: "Number of expenses to return (default: 10)", default: 10 }
                                 },
                             },
                         },
                         {
                             name: "add_expense",
-                            description: "Add a new expense entry",
+                            description: "Add a new expense entry for the authenticated user",
                             inputSchema: {
                                 type: "object",
                                 properties: {
                                     description: { type: "string", description: "What was the expense for?" },
                                     amount: { type: "number", description: "How much was spent?" },
                                     category: { type: "string", description: "Expense category (e.g., food, transport, bills)", default: "other" },
-                                    note: { type: "string", description: "Optional note about the expense" },
-                                    userId: { type: "number", description: "User ID (defaults to 1 if not specified)", default: 1 }
+                                    note: { type: "string", description: "Optional note about the expense" }
                                 },
                                 required: ["description", "amount"],
                             },
                         },
                         {
                             name: "list_income",
-                            description: "List recent income sources",
+                            description: "List recent income sources for the authenticated user",
                             inputSchema: {
                                 type: "object",
-                                properties: {
-                                    userId: { type: "number", description: "User ID (defaults to 1 if not specified)", default: 1 }
-                                },
+                                properties: {},
                             },
                         },
                         {
                             name: "add_income",
-                            description: "Add a new income source",
+                            description: "Add a new income source for the authenticated user",
                             inputSchema: {
                                 type: "object",
                                 properties: {
                                     name: { type: "string", description: "Name of the income source (e.g., Salary, Freelance)" },
                                     amount: { type: "number", description: "Amount of income" },
                                     frequency: { type: "string", enum: ["monthly", "weekly", "bi-weekly", "yearly"], default: "monthly" },
-                                    description: { type: "string", description: "Optional description" },
-                                    userId: { type: "number", description: "User ID (defaults to 1 if not specified)", default: 1 }
+                                    description: { type: "string", description: "Optional description" }
                                 },
                                 required: ["name", "amount"],
                             },
                         },
                         {
                             name: "get_budget_summary",
-                            description: "Provides a summary of total income, total expenses, and balance",
+                            description: "Provides a summary of total income, total expenses, and balance for the authenticated user",
                             inputSchema: {
                                 type: "object",
-                                properties: {
-                                    userId: { type: "number", description: "User ID (defaults to 1 if not specified)", default: 1 }
-                                },
+                                properties: {},
                             },
                         },
                     ],
                 }
             };
         } else if (message.method === 'tools/call') {
-            // Handle tool call directly
+            // Handle tool call - use defaultUserId from token (already validated)
             const { name, arguments: args } = message.params;
-            const userId = (args?.userId as number) || 1;
             let result: any;
 
             switch (name) {

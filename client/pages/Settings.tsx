@@ -4,7 +4,6 @@ import {
   ChevronLeft,
   User,
   Bell,
-  Moon,
   Shield,
   FileDown,
   ChevronRight,
@@ -40,7 +39,6 @@ function SettingsContent() {
   const { user, logoutMutation, updateProfileMutation } = useAuth();
   const [loading, setLoading] = useState(false);
   const [notifications, setNotifications] = useState(true);
-  const [darkMode, setDarkMode] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark" | "system">("system");
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editDisplayName, setEditDisplayName] = useState("");
@@ -53,10 +51,8 @@ function SettingsContent() {
     if (nextTheme === "system") {
       const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
       root.classList.toggle("dark", prefersDark);
-      setDarkMode(prefersDark);
     } else {
       root.classList.toggle("dark", nextTheme === "dark");
-      setDarkMode(nextTheme === "dark");
     }
 
     localStorage.setItem("theme", nextTheme);
@@ -354,25 +350,6 @@ function SettingsContent() {
                     description: value
                       ? "Notifications are enabled for this device."
                       : "Notifications are disabled for this device.",
-                  });
-                }}
-              />
-            }
-          />
-          <SettingItem
-            icon={Moon}
-            label="Dark Mode"
-            action={
-              <Switch
-                checked={darkMode}
-                onCheckedChange={(checked) => {
-                  const isDark = Boolean(checked);
-                  applyTheme(isDark ? "dark" : "light");
-                  toast({
-                    title: "Appearance updated",
-                    description: isDark
-                      ? "Dark mode enabled."
-                      : "Light mode enabled.",
                   });
                 }}
               />

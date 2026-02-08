@@ -98,6 +98,69 @@ SMTP_FROM=your-email@outlook.com
 - Check server logs for error messages
 - Verify SMTP credentials are correct
 
+## Testing Email Configuration
+
+### Using the Test Scripts
+
+We provide standalone scripts to test your email configuration:
+
+**JavaScript version:**
+```bash
+# Check configuration and test connection
+node scripts/test-email.js
+
+# Check configuration, test connection, and send a test email
+node scripts/test-email.js --send your-email@example.com
+```
+
+**TypeScript version:**
+```bash
+# Check configuration and test connection
+npx ts-node scripts/test-email.ts
+
+# Check configuration, test connection, and send a test email
+npx ts-node scripts/test-email.ts --send your-email@example.com
+```
+
+The scripts will:
+1. ✅ Check if all required environment variables are set
+2. 🔌 Test the SMTP connection
+3. 📧 Optionally send a test email to verify everything works
+
+### Using the API Endpoints
+
+**Check Email Availability:**
+```bash
+# GET /api/mcp/check-email
+# Returns detailed information about SMTP configuration and connection status
+curl -X GET http://localhost:5000/api/mcp/check-email \
+  -H "Cookie: connect.sid=YOUR_SESSION_COOKIE"
+```
+
+**Send Test Email:**
+```bash
+# POST /api/mcp/test-email
+# Sends a test email to your authenticated user's email address
+curl -X POST http://localhost:5000/api/mcp/test-email \
+  -H "Cookie: connect.sid=YOUR_SESSION_COOKIE"
+```
+
+**Response Example (Check Email):**
+```json
+{
+  "configured": true,
+  "connectionTest": true,
+  "details": {
+    "smtpHost": "smtp.gmail.com",
+    "smtpPort": 587,
+    "smtpSecure": false,
+    "smtpUser": "your-email@gmail.com",
+    "smtpFrom": "your-email@gmail.com"
+  },
+  "message": "SMTP is configured and connection test passed"
+}
+```
+
 ## Development Mode
 
 If SMTP is not configured, the OTP code will be logged to the server console. Check your server logs to see the OTP code during development.

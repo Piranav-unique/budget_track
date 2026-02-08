@@ -155,6 +155,38 @@ export async function handleTokenStatus(req: Request, res: Response) {
 }
 
 /**
+ * Check email availability and SMTP configuration
+ * GET /api/mcp/check-email
+ */
+export async function handleCheckEmail(req: Request, res: Response) {
+    try {
+        if (!req.isAuthenticated()) {
+            return res.status(401).json({ error: 'Not authenticated' });
+        }
+
+        const availability = await emailService.checkEmailAvailability();
+        
+        res.json({
+            ...availability,
+            message: availability.configured 
+                ? (availability.connectionTest 
+                    ? 'SMTP is configured and connection test passed' 
+                    : 'SMTP is configured but connection test failed')
+                : 'SMTP is not configured',
+            instructions: !availability.configured 
+                ? 'See EMAIL_SETUP.md for Gmail SMTP configuration'
+                : undefined,
+        });
+    } catch (error) {
+        console.error('Error checking email availability:', error);
+        res.status(500).json({
+            error: 'Failed to check email availability',
+            message: error instanceof Error ? error.message : 'Unknown error',
+        });
+    }
+}
+
+/**
  * Test email sending (for debugging SMTP configuration)
  * POST /api/mcp/test-email
  */
@@ -171,24 +203,42 @@ export async function handleTestEmail(req: Request, res: Response) {
             });
         }
 
-        // Check if SMTP is configured
-        const smtpConfigured = !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
-        if (!smtpConfigured) {
+        // First check email availability
+        const availability = await emailService.checkEmailAvailability();
+        
+        if (!availability.configured) {
             return res.status(400).json({
                 error: 'SMTP is not configured',
+                ...availability,
                 message: 'Please set SMTP_HOST, SMTP_USER, and SMTP_PASS environment variables',
                 instructions: 'See EMAIL_SETUP.md for Gmail SMTP configuration'
             });
         }
 
+        if (!availability.connectionTest) {
+            return res.status(400).json({
+                error: 'SMTP connection test failed',
+                ...availability,
+                message: 'SMTP is configured but connection verification failed. Check your credentials and network.',
+                instructions: 'See EMAIL_SETUP.md for troubleshooting'
+            });
+        }
+
         // Send a test email
-        const testCode = '123456';
-        await emailService.sendOTP(user.email, testCode, user.display_name || user.username);
+        const testResult = await emailService.sendTestEmail(user.email, user.display_name || user.username);
+
+        if (!testResult.success) {
+            return res.status(500).json({
+                error: 'Failed to send test email',
+                ...testResult,
+                availability,
+            });
+        }
 
         res.json({
             success: true,
-            message: `Test email sent to ${user.email}`,
-            note: 'Check your inbox (and spam folder) for the test email'
+            ...testResult,
+            availability,
         });
     } catch (error) {
         console.error('Error sending test email:', error);

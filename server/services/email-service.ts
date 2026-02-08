@@ -123,6 +123,100 @@ export class EmailService {
         console.log('   SMTP_FROM=your-email@gmail.com');
         console.log('='.repeat(50));
     }
+
+    /**
+     * Check email availability and SMTP configuration
+     * Returns detailed diagnostic information
+     */
+    async checkEmailAvailability(): Promise<{
+        configured: boolean;
+        connectionTest: boolean;
+        details: {
+            smtpHost?: string;
+            smtpPort?: number;
+            smtpSecure?: boolean;
+            smtpUser?: string;
+            smtpFrom?: string;
+            error?: string;
+        };
+    }> {
+        const result = {
+            configured: false,
+            connectionTest: false,
+            details: {} as any,
+        };
+
+        // Check if environment variables are set
+        const smtpHost = process.env.SMTP_HOST;
+        const smtpUser = process.env.SMTP_USER;
+        const smtpPass = process.env.SMTP_PASS;
+        const smtpPort = process.env.SMTP_PORT || '587';
+        const smtpSecure = process.env.SMTP_SECURE === 'true';
+        const smtpFrom = process.env.SMTP_FROM || smtpUser;
+
+        result.details = {
+            smtpHost: smtpHost || undefined,
+            smtpPort: smtpPort ? parseInt(smtpPort) : undefined,
+            smtpSecure,
+            smtpUser: smtpUser || undefined,
+            smtpFrom: smtpFrom || undefined,
+        };
+
+        // Check if all required variables are present
+        if (!smtpHost || !smtpUser || !smtpPass) {
+            result.configured = false;
+            result.details.error = 'Missing required SMTP environment variables. Need: SMTP_HOST, SMTP_USER, SMTP_PASS';
+            return result;
+        }
+
+        result.configured = true;
+
+        // Test SMTP connection if transporter is available
+        if (this.transporter) {
+            try {
+                // Verify SMTP connection
+                await this.transporter.verify();
+                result.connectionTest = true;
+                console.log('✅ SMTP connection verified successfully');
+            } catch (error) {
+                result.connectionTest = false;
+                result.details.error = error instanceof Error ? error.message : 'Unknown error during SMTP verification';
+                console.error('❌ SMTP connection verification failed:', error);
+            }
+        } else {
+            result.details.error = 'Transporter not initialized (should not happen if configured is true)';
+        }
+
+        return result;
+    }
+
+    /**
+     * Send a test email to verify email functionality
+     */
+    async sendTestEmail(to: string, userName?: string): Promise<{ success: boolean; message: string; error?: string }> {
+        if (!this.transporter) {
+            return {
+                success: false,
+                message: 'SMTP is not configured',
+                error: 'Transporter not initialized. Please configure SMTP environment variables.',
+            };
+        }
+
+        try {
+            const testCode = 'TEST123';
+            await this.sendOTP(to, testCode, userName);
+            return {
+                success: true,
+                message: `Test email sent successfully to ${to}. Check your inbox (and spam folder).`,
+            };
+        } catch (error) {
+            return {
+                success: false,
+                message: 'Failed to send test email',
+                error: error instanceof Error ? error.message : 'Unknown error',
+            };
+        }
+    }
 }
 
 export const emailService = new EmailService();

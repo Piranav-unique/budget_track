@@ -27,3 +27,8 @@ dist-ssr
 .env
 .vercel
 .env*.local
+
+# Test and utility scripts (development only)
+test-*.js
+reset-*.js
+*-test.js

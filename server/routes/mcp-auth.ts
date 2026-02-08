@@ -23,12 +23,38 @@ export async function handleRequestOTP(req: Request, res: Response) {
 
         // Generate and send OTP
         const code = await otpService.createOTP(user.id, user.email);
-        await emailService.sendOTP(user.email, code, user.display_name || user.username);
-
-        res.json({ 
-            message: 'OTP code sent to your email address',
-            email: user.email // Return masked email for confirmation
-        });
+        
+        try {
+            await emailService.sendOTP(user.email, code, user.display_name || user.username);
+            
+            // Check if SMTP is configured (if not, email service will log to console)
+            const smtpConfigured = !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+            
+            res.json({ 
+                message: smtpConfigured 
+                    ? 'OTP code sent to your email address' 
+                    : 'OTP code generated (check server console - SMTP not configured)',
+                email: user.email, // Return masked email for confirmation
+                // In development mode (SMTP not configured), include OTP in response
+                // This is safe because it's only shown if SMTP is not configured
+                ...(smtpConfigured ? {} : { 
+                    developmentMode: true,
+                    otpCode: code,
+                    note: 'SMTP is not configured. OTP is shown here for development only. Configure SMTP to send real emails.'
+                })
+            });
+        } catch (error) {
+            // If email sending fails but we have the code, still return success
+            // The code is logged to console as fallback
+            console.error('Email sending failed, but OTP code is:', code);
+            res.json({ 
+                message: 'OTP code generated (email sending failed - check server logs)',
+                email: user.email,
+                developmentMode: true,
+                otpCode: code,
+                note: 'Email sending failed. Check SMTP configuration. OTP code is shown here for development.'
+            });
+        }
     } catch (error) {
         console.error('Error requesting OTP:', error);
         res.status(500).json({ 

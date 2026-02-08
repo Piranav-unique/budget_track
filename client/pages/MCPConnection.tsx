@@ -17,6 +17,7 @@ export default function MCPConnection() {
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [email, setEmail] = useState("");
+  const [devOtp, setDevOtp] = useState<string | null>(null);
 
   const handleRequestOTP = async () => {
     if (!user?.email) {
@@ -42,11 +43,24 @@ export default function MCPConnection() {
 
       const data = await res.json();
       setEmail(data.email || user.email);
+      
+      // If in development mode, show OTP code
+      if (data.developmentMode && data.otpCode) {
+        setDevOtp(data.otpCode);
+        toast({
+          title: "OTP Generated (Development Mode)",
+          description: `SMTP not configured. OTP: ${data.otpCode}`,
+          duration: 10000,
+        });
+      } else {
+        setDevOtp(null);
+        toast({
+          title: "OTP Sent",
+          description: `Verification code sent to ${data.email || user.email}`,
+        });
+      }
+      
       setStep("verify");
-      toast({
-        title: "OTP Sent",
-        description: `Verification code sent to ${data.email || user.email}`,
-      });
     } catch (error) {
       toast({
         title: "Error",
@@ -194,12 +208,29 @@ export default function MCPConnection() {
 
             {step === "verify" && (
               <div className="space-y-4">
-                <Alert>
-                  <Mail className="h-4 w-4" />
-                  <AlertDescription>
-                    Enter the 6-digit code sent to <strong>{email || user.email}</strong>
-                  </AlertDescription>
-                </Alert>
+                {devOtp ? (
+                  <Alert className="border-yellow-500 bg-yellow-50 dark:bg-yellow-950">
+                    <Mail className="h-4 w-4" />
+                    <AlertDescription>
+                      <strong>Development Mode:</strong> SMTP is not configured. Your OTP code is:
+                      <div className="mt-2 p-3 bg-white dark:bg-gray-800 rounded border-2 border-yellow-500">
+                        <code className="text-2xl font-bold tracking-widest text-yellow-700 dark:text-yellow-400">
+                          {devOtp}
+                        </code>
+                      </div>
+                      <p className="mt-2 text-sm">
+                        Configure SMTP to receive emails. See <code>EMAIL_SETUP.md</code> for instructions.
+                      </p>
+                    </AlertDescription>
+                  </Alert>
+                ) : (
+                  <Alert>
+                    <Mail className="h-4 w-4" />
+                    <AlertDescription>
+                      Enter the 6-digit code sent to <strong>{email || user.email}</strong>
+                    </AlertDescription>
+                  </Alert>
+                )}
                 <div className="space-y-2">
                   <Label htmlFor="otp">Verification Code</Label>
                   <Input

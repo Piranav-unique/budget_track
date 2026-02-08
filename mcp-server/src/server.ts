@@ -983,6 +983,15 @@ async function handleMCPMessage(message: any, res: express.Response, token?: str
     }
 }
 
+// Handle CORS preflight for /sse endpoint
+app.options('/sse', (req, res) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Cache-Control');
+    res.setHeader('Access-Control-Max-Age', '86400');
+    res.status(204).end();
+});
+
 // POST endpoint for MCP messages (ChatGPT uses POST for MCP protocol)
 app.post('/sse', express.json(), async (req, res) => {
     try {
@@ -1122,6 +1131,7 @@ app.post('/sse', express.json(), async (req, res) => {
                 }
             };
             console.log(`✅ Tools list prepared (${response.result.tools.length} tools)`);
+            console.log('📋 Tools list response:', JSON.stringify(response, null, 2));
         } else if (message.method === 'tools/call') {
             console.log(`🔨 Handling tools/call via POST: ${message.params?.name}`);
             // Handle tool call - use defaultUserId from token (already validated)

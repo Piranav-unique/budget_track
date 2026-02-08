@@ -594,6 +594,7 @@ paths:
 });
 
 // SSE endpoint for ChatGPT MCP connection
+// Handle both GET (SSE streaming) and POST (JSON-RPC) requests
 app.get('/sse', (req, res) => {
     // Set headers for SSE
     res.setHeader('Content-Type', 'text/event-stream');
@@ -613,10 +614,18 @@ app.get('/sse', (req, res) => {
         buffer = lines.pop() || '';
 
         for (const line of lines) {
-            if (line.trim()) {
+            if (line.trim() && line.startsWith('data: ')) {
+                try {
+                    const jsonStr = line.substring(6); // Remove 'data: ' prefix
+                    const message = JSON.parse(jsonStr);
+                    // Handle MCP protocol messages
+                    handleMCPMessage(message, res);
+                } catch (error) {
+                    console.error('Error parsing SSE message:', error);
+                }
+            } else if (line.trim()) {
                 try {
                     const message = JSON.parse(line);
-                    // Handle MCP protocol messages
                     handleMCPMessage(message, res);
                 } catch (error) {
                     console.error('Error parsing message:', error);
@@ -635,7 +644,23 @@ async function handleMCPMessage(message: any, res: express.Response) {
     try {
         let response: any;
 
-        if (message.method === 'tools/list') {
+        // Handle MCP initialize method
+        if (message.method === 'initialize') {
+            response = {
+                jsonrpc: '2.0',
+                id: message.id,
+                result: {
+                    protocolVersion: '2024-11-05',
+                    capabilities: {
+                        tools: {}
+                    },
+                    serverInfo: {
+                        name: 'budget-track-mcp-server',
+                        version: '1.0.0'
+                    }
+                }
+            };
+        } else if (message.method === 'tools/list') {
             // Get tools list
             const toolsResponse = {
                 tools: [
@@ -793,7 +818,23 @@ app.post('/sse', express.json(), async (req, res) => {
         const message = req.body;
         let response: any;
 
-        if (message.method === 'tools/list') {
+        // Handle MCP initialize method
+        if (message.method === 'initialize') {
+            response = {
+                jsonrpc: '2.0',
+                id: message.id,
+                result: {
+                    protocolVersion: '2024-11-05',
+                    capabilities: {
+                        tools: {}
+                    },
+                    serverInfo: {
+                        name: 'budget-track-mcp-server',
+                        version: '1.0.0'
+                    }
+                }
+            };
+        } else if (message.method === 'tools/list') {
             // Return tools list (same as GET /mcp/tools)
             response = {
                 jsonrpc: '2.0',

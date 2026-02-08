@@ -17,6 +17,16 @@ services:
         sync: false
       - key: NODE_ENV
         value: production
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SMTP_FROM
+        sync: false
 
   - type: web
     name: budget-track-mcp-server

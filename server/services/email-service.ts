@@ -14,6 +14,10 @@ export class EmailService {
                     user: process.env.SMTP_USER,
                     pass: process.env.SMTP_PASS,
                 },
+                // Add timeouts to prevent hanging on connection issues
+                connectionTimeout: 10000, // 10 seconds
+                greetingTimeout: 10000, // 10 seconds
+                socketTimeout: 15000, // 15 seconds
             });
             console.log('✅ Email service configured with SMTP');
         } else {

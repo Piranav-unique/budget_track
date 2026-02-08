@@ -1,5 +1,5 @@
-import dns from "dns";
-dns.setDefaultResultOrder("ipv4first");
+import "dotenv/config";
+
 
 // FIX: Disable strict SSL validation to allow connection to Supabase Transaction Pooler (which uses self-signed certs)
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";

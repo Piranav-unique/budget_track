@@ -1,0 +1,21 @@
+{
+    "name": "budget-track-mcp-server",
+    "version": "1.0.0",
+    "description": "MCP server for Budget Track application",
+    "main": "index.js",
+    "type": "module",
+    "scripts": {
+        "start": "node index.js",
+        "build": "tsc"
+    },
+    "dependencies": {
+        "@modelcontextprotocol/sdk": "^1.26.0",
+        "dotenv": "^16.4.5",
+        "pg": "^8.11.3"
+    },
+    "devDependencies": {
+        "@types/node": "^20.11.19",
+        "@types/pg": "^8.11.0",
+        "typescript": "^5.3.3"
+    }
+}

@@ -18,7 +18,9 @@ export class EmailService {
                 connectionTimeout: 10000, // 10 seconds
                 greetingTimeout: 10000, // 10 seconds
                 socketTimeout: 15000, // 15 seconds
-            });
+                // Force IPv4 to avoid IPv6 connectivity issues
+                family: 4,
+            } as any);
             console.log('✅ Email service configured with SMTP');
         } else {
             console.warn('⚠️  Email service not configured - OTPs will be logged to console only');

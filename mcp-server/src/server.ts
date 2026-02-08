@@ -641,36 +641,80 @@ app.get('/sse', async (req, res) => {
 
     // Send initial connection message
     res.write(': connected\n\n');
+    res.flushHeaders?.(); // Ensure headers are sent immediately
 
     // Handle incoming messages from client
     let buffer = '';
+    let messageCount = 0;
+    
     req.on('data', async (chunk: Buffer) => {
         buffer += chunk.toString();
         const lines = buffer.split('\n');
         buffer = lines.pop() || '';
 
         for (const line of lines) {
-            if (line.trim() && line.startsWith('data: ')) {
-                try {
+            if (!line.trim()) continue;
+            
+            try {
+                let message: any;
+                
+                // Handle SSE format: "data: {...}"
+                if (line.startsWith('data: ')) {
                     const jsonStr = line.substring(6); // Remove 'data: ' prefix
-                    const message = JSON.parse(jsonStr);
-                    // Handle MCP protocol messages with token
-                    await handleMCPMessage(message, res, token);
-                } catch (error) {
-                    console.error('Error parsing SSE message:', error);
+                    message = JSON.parse(jsonStr);
+                } 
+                // Handle direct JSON
+                else if (line.trim().startsWith('{')) {
+                    message = JSON.parse(line.trim());
                 }
-            } else if (line.trim()) {
-                try {
-                    const message = JSON.parse(line);
+                // Skip comment lines
+                else if (line.startsWith(':')) {
+                    continue;
+                }
+                else {
+                    continue;
+                }
+                
+                if (message && message.method) {
+                    messageCount++;
+                    console.log(`📨 Received MCP message #${messageCount}: ${message.method} (id: ${message.id})`);
                     await handleMCPMessage(message, res, token);
-                } catch (error) {
-                    console.error('Error parsing message:', error);
+                }
+            } catch (error) {
+                console.error('❌ Error parsing SSE message:', error, 'Line:', line.substring(0, 100));
+                // Send error response if we have a message ID
+                try {
+                    const parsed = JSON.parse(line.trim());
+                    if (parsed.id) {
+                        const errorResponse = {
+                            jsonrpc: '2.0',
+                            id: parsed.id,
+                            error: {
+                                code: -32700,
+                                message: 'Parse error: Invalid JSON format'
+                            }
+                        };
+                        res.write(`data: ${JSON.stringify(errorResponse)}\n\n`);
+                    }
+                } catch (e) {
+                    // Ignore parse errors for error responses
                 }
             }
         }
     });
 
+    req.on('end', () => {
+        console.log(`🔌 SSE connection ended for user: ${tokenInfo.email || tokenInfo.username}`);
+        res.end();
+    });
+
     req.on('close', () => {
+        console.log(`🔌 SSE connection closed for user: ${tokenInfo.email || tokenInfo.username}`);
+        res.end();
+    });
+
+    req.on('error', (error) => {
+        console.error('❌ SSE connection error:', error);
         res.end();
     });
 });
@@ -766,6 +810,7 @@ async function handleMCPMessage(message: any, res: express.Response, token?: str
                 }
             };
         } else if (message.method === 'tools/list') {
+            console.log('📋 Handling tools/list request');
             // Get tools list (user is determined from token, so no userId in schema)
             response = {
                 jsonrpc: '2.0',
@@ -829,7 +874,9 @@ async function handleMCPMessage(message: any, res: express.Response, token?: str
                     ],
                 },
             };
+            console.log(`✅ Tools list sent (${response.result.tools.length} tools)`);
         } else if (message.method === 'tools/call') {
+            console.log(`🔨 Handling tools/call: ${message.params?.name}`);
             // Handle tool call - use userId from token (already validated)
             const { name, arguments: args } = message.params;
             // Use defaultUserId which is determined from token
@@ -895,8 +942,13 @@ async function handleMCPMessage(message: any, res: express.Response, token?: str
         }
 
         // Send response as SSE
-        res.write(`data: ${JSON.stringify(response)}\n\n`);
+        const responseStr = `data: ${JSON.stringify(response)}\n\n`;
+        res.write(responseStr);
+        if (message.method) {
+            console.log(`📤 Sent response for ${message.method} (id: ${message.id || 'null'})`);
+        }
     } catch (error) {
+        console.error('❌ Error handling MCP message:', error);
         const errorResponse = {
             jsonrpc: '2.0',
             id: message.id,
@@ -906,6 +958,7 @@ async function handleMCPMessage(message: any, res: express.Response, token?: str
             }
         };
         res.write(`data: ${JSON.stringify(errorResponse)}\n\n`);
+        console.log(`📤 Sent error response (id: ${message.id || 'null'})`);
     }
 }
 

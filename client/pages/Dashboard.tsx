@@ -138,7 +138,7 @@ export default function Dashboard() {
 
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
   const monthlySpent = getTotalSpent(expenses, monthStart, monthEnd);
   const monthlyRemaining = budget.monthly - monthlySpent;
@@ -149,6 +149,7 @@ export default function Dashboard() {
   weekStart.setDate(now.getDate() - now.getDay()); // Sunday
   const weekEnd = new Date(now);
   weekEnd.setDate(weekStart.getDate() + 6);
+  weekEnd.setHours(23, 59, 59, 999);
 
   const weeklySpent = getTotalSpent(expenses, weekStart, weekEnd);
   const weeklyRemaining = budget.weekly - weeklySpent;
@@ -197,7 +198,7 @@ export default function Dashboard() {
                     <span className="hidden sm:inline">Last updated: {new Date().toLocaleDateString()}</span>
                     <span className="sm:hidden">{new Date().toLocaleDateString()}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 md:px-3 md:py-1 rounded-full">
+                  <div className="flex items-center gap-2 text-emerald-600 bg-emerald-50 px-2 py-0.5 md:px-3 md:py-1 rounded-full">
                     <Activity className="w-3 h-3 md:w-4 md:h-4" />
                     <span className="font-medium">Live Data</span>
                   </div>
@@ -245,7 +246,7 @@ export default function Dashboard() {
           {/* Professional KPI Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {/* Monthly Budget Card */}
-            <Card className="border-0 shadow-lg shadow-slate-200/60 dark:shadow-slate-900/60 bg-card overflow-hidden relative group hover:-translate-y-1 transition-all duration-300 hover:shadow-xl">
+            <Card className="border-0 shadow-lg shadow-slate-200/60 bg-card overflow-hidden relative group hover:-translate-y-1 transition-all duration-300 hover:shadow-xl">
               <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
                 <Wallet className="w-32 h-32 text-blue-500" />
               </div>
@@ -325,7 +326,7 @@ export default function Dashboard() {
             </Card>
 
             {/* Total Balance Card */}
-            <Card className="border-0 shadow-lg shadow-emerald-200/60 dark:shadow-emerald-900/40 bg-card overflow-hidden relative group hover:-translate-y-1 transition-all duration-300 hover:shadow-xl">
+            <Card className="border-0 shadow-lg shadow-emerald-200/60 bg-card overflow-hidden relative group hover:-translate-y-1 transition-all duration-300 hover:shadow-xl">
               <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
                 <DollarSign className="w-32 h-32 text-emerald-500" />
               </div>

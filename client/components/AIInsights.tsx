@@ -191,19 +191,19 @@ export function AIInsights({
       )}
 
       {error && (
-        <Card className="border border-red-200 bg-red-50 dark:bg-red-950/30 dark:border-red-800">
+        <Card className="border border-red-200 bg-red-50">
           <CardContent className="p-6">
             <div className="flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
+              <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
               <div className="flex-1">
-                <p className="font-medium text-red-900 dark:text-red-100">AI Service Unavailable</p>
-                <p className="text-sm text-red-600 dark:text-red-400 mt-1">{error}</p>
+                <p className="font-medium text-red-900">AI Service Unavailable</p>
+                <p className="text-sm text-red-600 mt-1">{error}</p>
                 {error.toLowerCase().includes('api key') || error.toLowerCase().includes('not configured') ? (
-                  <div className="mt-3 p-3 bg-red-100 dark:bg-red-900/30 rounded-lg border border-red-200 dark:border-red-800">
-                    <p className="text-xs font-medium text-red-800 dark:text-red-200 mb-1">To fix this:</p>
-                    <ol className="text-xs text-red-700 dark:text-red-300 list-decimal list-inside space-y-1">
+                  <div className="mt-3 p-3 bg-red-100 rounded-lg border border-red-200">
+                    <p className="text-xs font-medium text-red-800 mb-1">To fix this:</p>
+                    <ol className="text-xs text-red-700 list-decimal list-inside space-y-1">
                       <li>Get a free API key from <a href="https://console.groq.com/" target="_blank" rel="noopener noreferrer" className="underline font-medium">Groq Console</a></li>
-                      <li>Add <code className="bg-red-200 dark:bg-red-900 px-1 rounded">GROQ_API_KEY=your_key_here</code> to your server's <code className="bg-red-200 dark:bg-red-900 px-1 rounded">.env</code> file</li>
+                      <li>Add <code className="bg-red-200 px-1 rounded">GROQ_API_KEY=your_key_here</code> to your server's <code className="bg-red-200 px-1 rounded">.env</code> file</li>
                       <li>Restart your server</li>
                     </ol>
                   </div>

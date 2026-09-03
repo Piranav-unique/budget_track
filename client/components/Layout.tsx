@@ -22,7 +22,7 @@ export default function Layout({ children }: LayoutProps) {
   return (
     <div className="flex h-screen bg-background">
       {/* Sidebar */}
-      <div className="hidden md:flex md:w-64 bg-primary dark:bg-slate-900 flex-col">
+      <div className="hidden md:flex md:w-64 bg-primary flex-col">
         <div className="p-6 border-b border-primary/20">
           <Link to="/" className="flex items-center gap-3">
             <div className="w-10 h-10 bg-primary-foreground rounded-lg flex items-center justify-center">

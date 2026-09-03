@@ -209,12 +209,12 @@ export default function MCPConnection() {
             {step === "verify" && (
               <div className="space-y-4">
                 {devOtp ? (
-                  <Alert className="border-yellow-500 bg-yellow-50 dark:bg-yellow-950">
+                  <Alert className="border-yellow-500 bg-yellow-50">
                     <Mail className="h-4 w-4" />
                     <AlertDescription>
                       <strong>Development Mode:</strong> SMTP is not configured. Your OTP code is:
-                      <div className="mt-2 p-3 bg-white dark:bg-gray-800 rounded border-2 border-yellow-500">
-                        <code className="text-2xl font-bold tracking-widest text-yellow-700 dark:text-yellow-400">
+                      <div className="mt-2 p-3 bg-white rounded border-2 border-yellow-500">
+                        <code className="text-2xl font-bold tracking-widest text-yellow-700">
                           {devOtp}
                         </code>
                       </div>

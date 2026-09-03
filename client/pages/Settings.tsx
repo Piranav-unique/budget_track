@@ -11,7 +11,6 @@ import {
   Wallet,
   HelpCircle,
   Mail,
-  Smartphone,
   Edit2,
   Key,
 } from "lucide-react";
@@ -39,25 +38,9 @@ function SettingsContent() {
   const { user, logoutMutation, updateProfileMutation } = useAuth();
   const [loading, setLoading] = useState(false);
   const [notifications, setNotifications] = useState(true);
-  const [theme, setTheme] = useState<"light" | "dark" | "system">("system");
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editDisplayName, setEditDisplayName] = useState("");
   const [editEmail, setEditEmail] = useState("");
-
-  const applyTheme = (nextTheme: "light" | "dark" | "system") => {
-    if (typeof document === "undefined") return;
-
-    const root = document.documentElement;
-    if (nextTheme === "system") {
-      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      root.classList.toggle("dark", prefersDark);
-    } else {
-      root.classList.toggle("dark", nextTheme === "dark");
-    }
-
-    localStorage.setItem("theme", nextTheme);
-    setTheme(nextTheme);
-  };
 
   useEffect(() => {
     // Load notification preference
@@ -65,11 +48,6 @@ function SettingsContent() {
     if (storedNotifications !== null) {
       setNotifications(storedNotifications === "true");
     }
-
-    // Load theme preference
-    const storedTheme = (localStorage.getItem("theme") as "light" | "dark" | "system" | null) || "system";
-    setTheme(storedTheme);
-    applyTheme(storedTheme);
   }, []);
 
   // Initialize edit form when dialog opens or user changes
@@ -354,31 +332,6 @@ function SettingsContent() {
                 }}
               />
             }
-          />
-          <SettingItem
-            icon={Smartphone}
-            label="App Appearance"
-            subLabel={
-              theme === "system"
-                ? "System Default"
-                : theme === "dark"
-                ? "Dark"
-                : "Light"
-            }
-            onClick={() => {
-              const next =
-                theme === "system" ? "light" : theme === "light" ? "dark" : "system";
-              applyTheme(next);
-              toast({
-                title: "Appearance updated",
-                description:
-                  next === "system"
-                    ? "Using system appearance."
-                    : next === "dark"
-                    ? "Dark mode enabled."
-                    : "Light mode enabled.",
-              });
-            }}
           />
         </SettingGroup>
 

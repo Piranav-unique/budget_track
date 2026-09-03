@@ -70,6 +70,22 @@ export function createServer() {
     });
 
     if (!res.headersSent) {
+      // Stale cookie after user was deleted — clear session and send user to login
+      if (err instanceof Error && err.message === "Failed to deserialize user out of session") {
+        const clearAndRedirect = () => {
+          res.clearCookie("connect.sid");
+          if (req.accepts("html") && req.method === "GET" && !req.path.startsWith("/api")) {
+            return res.redirect("/login");
+          }
+          return res.status(401).json({ error: "Session expired. Please log in again." });
+        };
+
+        if (req.session) {
+          return req.session.destroy(() => clearAndRedirect());
+        }
+        return clearAndRedirect();
+      }
+
       res.status(500).json({
         error: "Internal server error",
         details: err instanceof Error ? err.message : "Unknown error"

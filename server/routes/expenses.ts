@@ -49,9 +49,13 @@ export const handleCreateExpense: RequestHandler = async (req, res) => {
       const webhookUrl = process.env.N8N_EXPENSE_WEBHOOK_URL;
       if (webhookUrl) {
         console.log("Calling n8n webhook:", webhookUrl);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+
         const response = await fetch(webhookUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          signal: controller.signal,
           body: JSON.stringify({
             description,
             amount: parsedAmount,
@@ -60,6 +64,7 @@ export const handleCreateExpense: RequestHandler = async (req, res) => {
             note: note || null,
           }),
         });
+        clearTimeout(timeoutId);
         if (!response.ok) {
           const text = await response.text().catch(() => "");
           console.warn(

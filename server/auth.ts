@@ -78,7 +78,19 @@ export function setupAuth(app: Express) {
 
     app.use(session(sessionSettings));
     app.use(passport.initialize());
-    app.use(passport.session());
+    // Recover when session points at a deleted user (e.g. after DB wipe)
+    app.use((req, res, next) => {
+        passport.session()(req, res, (err?: Error) => {
+            if (err?.message === "Failed to deserialize user out of session") {
+                if (req.session) {
+                    delete (req.session as any).passport;
+                    return req.session.save(() => next());
+                }
+                return next();
+            }
+            return next(err);
+        });
+    });
 
     passport.use(
         new LocalStrategy(async (username, password, done) => {
@@ -161,6 +173,10 @@ export function setupAuth(app: Express) {
     passport.deserializeUser(async (id: number, done) => {
         try {
             const user = await storage.getUser(id);
+            // User was deleted (e.g. DB wipe) — clear session instead of crashing
+            if (!user) {
+                return done(null, false);
+            }
             done(null, user);
         } catch (err) {
             done(err);

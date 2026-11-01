@@ -1,7 +1,8 @@
 import { Link, useLocation } from "react-router-dom";
 import { useState } from "react";
-import { Menu, X, Wallet, BarChart3, Settings, Plus, Home } from "lucide-react";
+import { Menu, X, Wallet, BarChart3, Settings, Plus, Home, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { QuickAddIncomeModal } from "@/components/QuickAddIncomeModal";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -57,6 +58,21 @@ export default function Layout({ children }: LayoutProps) {
               </Link>
             );
           })}
+
+          {/* Quick Add Income Modal in Main Sidebar */}
+          <div className="pt-2">
+            <QuickAddIncomeModal
+              trigger={
+                <button
+                  type="button"
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-emerald-300 bg-emerald-500/15 hover:bg-emerald-500/25 hover:text-white transition-all text-left font-semibold cursor-pointer border border-emerald-400/30 shadow-sm"
+                >
+                  <Zap className="w-5 h-5 text-emerald-400" />
+                  <span>+ Quick Income</span>
+                </button>
+              }
+            />
+          </div>
         </nav>
 
         <div className="p-4 border-t border-primary/20">
@@ -133,6 +149,21 @@ export default function Layout({ children }: LayoutProps) {
               </Link>
             );
           })}
+
+          <div className="pt-2">
+            <QuickAddIncomeModal
+              trigger={
+                <button
+                  type="button"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-all text-left font-semibold cursor-pointer border border-emerald-200 shadow-sm"
+                >
+                  <Zap className="w-5 h-5 text-emerald-600" />
+                  <span>+ Quick Income</span>
+                </button>
+              }
+            />
+          </div>
         </nav>
       </div>
 

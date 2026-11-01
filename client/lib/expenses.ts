@@ -16,14 +16,17 @@ export interface Expense {
   category: ExpenseCategory;
   date: Date;
   note?: string;
+  chat_id?: string;
+  source?: string;
 }
 
 export interface IncomeSource {
   id: string;
   name: string;
   amount: number;
-  frequency: 'monthly' | 'weekly' | 'bi-weekly' | 'yearly';
+  frequency: 'monthly' | 'weekly' | 'bi-weekly' | 'yearly' | 'one-time' | 'spot' | 'bonus';
   description?: string;
+  date?: string | Date;
 }
 
 export interface Budget {

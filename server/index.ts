@@ -36,6 +36,7 @@ export function createServer() {
   app.post("/api/webhook/telegram", handleTelegramExpense);
   app.post("/api/webhook/n8n", handleTelegramExpense);
   app.post("/api/expenses/telegram", handleTelegramExpense);
+  app.post("/api/webhook/income", handleCreateIncome);
 
   // AI Expense Categorization endpoint
   app.post("/api/categorize-expense", handleCategorizeExpense);

@@ -1,19 +1,42 @@
 import { RequestHandler } from "express";
 import { pool } from "../db";
 import { User } from "../../shared/api";
+import { getPiranavUserId } from "./expenses";
 
 export const handleCreateIncome: RequestHandler = async (req, res) => {
   try {
-    // Require authentication
-    if (!req.isAuthenticated()) {
+    const { name, amount, frequency, description, source, userId } = req.body ?? {};
+
+    const isAuthenticated = typeof req.isAuthenticated === "function" && req.isAuthenticated();
+
+    // Check if request originates from Telegram, n8n, or an external webhook
+    const isTelegramOrN8n =
+      source === "telegram" ||
+      source === "n8n" ||
+      req.headers["x-source"] === "telegram" ||
+      req.headers["x-source"] === "n8n" ||
+      (req.headers["x-webhook-secret"] &&
+        (req.headers["x-webhook-secret"] === process.env.N8N_WEBHOOK_SECRET ||
+         req.headers["x-webhook-secret"] === process.env.TELEGRAM_WEBHOOK_SECRET));
+
+    if (!isAuthenticated && !isTelegramOrN8n && !userId) {
       return res.status(401).json({ error: "Authentication required" });
     }
 
-    const user = req.user as User;
-    const { name, amount, frequency, description } = req.body ?? {};
+    let targetUserId: number;
+    if (isAuthenticated) {
+      targetUserId = (req.user as User).id;
+    } else if (isTelegramOrN8n) {
+      targetUserId = await getPiranavUserId();
+      console.log(`[Telegram/n8n Income] Routed to user 'piranav' (ID: ${targetUserId})`);
+    } else if (userId) {
+      targetUserId = Number(userId);
+    } else {
+      targetUserId = await getPiranavUserId();
+    }
 
     if (!name || typeof name !== "string") {
-      return res.status(400).json({ error: "name is required" });
+      return res.status(400).json({ error: "name is required (e.g. 'Bonus' or 'Freelance')" });
     }
 
     const parsedAmount = Number(amount);
@@ -21,9 +44,22 @@ export const handleCreateIncome: RequestHandler = async (req, res) => {
       return res.status(400).json({ error: "amount must be a positive number" });
     }
 
-    const validFrequencies = ['monthly', 'weekly', 'bi-weekly', 'yearly'];
-    if (!frequency || !validFrequencies.includes(frequency)) {
-      return res.status(400).json({ error: "frequency must be one of: monthly, weekly, bi-weekly, yearly" });
+    // Default to 'one-time' for quick spot incomes / bonuses
+    const resolvedFrequency = frequency || "one-time";
+    const validFrequencies = [
+      "monthly",
+      "weekly",
+      "bi-weekly",
+      "yearly",
+      "one-time",
+      "spot",
+      "bonus",
+    ];
+
+    if (!validFrequencies.includes(resolvedFrequency)) {
+      return res.status(400).json({
+        error: `frequency must be one of: ${validFrequencies.join(", ")}`,
+      });
     }
 
     const result = await pool.query(
@@ -34,16 +70,22 @@ export const handleCreateIncome: RequestHandler = async (req, res) => {
       [
         name,
         parsedAmount,
-        frequency,
+        resolvedFrequency,
         description || null,
-        user.id, // Use authenticated user's ID
+        targetUserId,
         new Date().toISOString(),
-        new Date().toISOString()
+        new Date().toISOString(),
       ]
     );
 
     const income = result.rows[0];
-    return res.status(201).json(income);
+    console.log(`✅ [Income Added] ₹${parsedAmount} (${name} - ${resolvedFrequency}) for user ID: ${targetUserId}`);
+
+    return res.status(201).json({
+      success: true,
+      message: `Income of ₹${parsedAmount} for "${name}" added successfully.`,
+      income,
+    });
   } catch (error) {
     console.error("Create income error:", error);
     return res.status(500).json({ error: "Failed to create income source" });
@@ -64,7 +106,7 @@ export const handleListIncome: RequestHandler = async (req, res) => {
       console.error("DATABASE_URL is missing");
       return res.status(500).json({
         error: "Database configuration missing",
-        details: "DATABASE_URL environment variable is not set"
+        details: "DATABASE_URL environment variable is not set",
       });
     }
 
@@ -75,26 +117,23 @@ export const handleListIncome: RequestHandler = async (req, res) => {
       console.error("Database connection test failed:", dbError);
       return res.status(500).json({
         error: "Database connection failed",
-        details: dbError instanceof Error ? dbError.message : "Unknown database error"
+        details: dbError instanceof Error ? dbError.message : "Unknown database error",
       });
     }
 
-    console.log(`Fetching income sources for user ${user.id} from database...`);
     const result = await pool.query(
       "SELECT * FROM income_sources WHERE user_id = $1 ORDER BY created_at DESC",
       [user.id]
     );
-    console.log(`Successfully fetched ${result.rows.length} income sources for user ${user.id}.`);
     return res.status(200).json(result.rows);
   } catch (error) {
     console.error("List income error:", {
       message: error instanceof Error ? error.message : "Unknown error",
       stack: error instanceof Error ? error.stack : undefined,
-      dbUrl: process.env.DATABASE_URL ? "Present (masked)" : "MISSING"
     });
     return res.status(500).json({
       error: "Failed to load income sources",
-      details: error instanceof Error ? error.message : "Unknown error"
+      details: error instanceof Error ? error.message : "Unknown error",
     });
   }
 };
@@ -123,9 +162,21 @@ export const handleUpdateIncome: RequestHandler = async (req, res) => {
       return res.status(400).json({ error: "amount must be a positive number" });
     }
 
-    const validFrequencies = ['monthly', 'weekly', 'bi-weekly', 'yearly'];
-    if (!frequency || !validFrequencies.includes(frequency)) {
-      return res.status(400).json({ error: "frequency must be one of: monthly, weekly, bi-weekly, yearly" });
+    const resolvedFrequency = frequency || "one-time";
+    const validFrequencies = [
+      "monthly",
+      "weekly",
+      "bi-weekly",
+      "yearly",
+      "one-time",
+      "spot",
+      "bonus",
+    ];
+
+    if (!validFrequencies.includes(resolvedFrequency)) {
+      return res.status(400).json({
+        error: `frequency must be one of: ${validFrequencies.join(", ")}`,
+      });
     }
 
     // Update income source only if it belongs to the authenticated user
@@ -137,11 +188,11 @@ export const handleUpdateIncome: RequestHandler = async (req, res) => {
       [
         name,
         parsedAmount,
-        frequency,
+        resolvedFrequency,
         description || null,
         new Date().toISOString(),
         id,
-        user.id
+        user.id,
       ]
     );
 
@@ -186,4 +237,3 @@ export const handleDeleteIncome: RequestHandler = async (req, res) => {
     return res.status(500).json({ error: "Failed to delete income source" });
   }
 };
-

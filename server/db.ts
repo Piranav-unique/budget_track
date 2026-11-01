@@ -63,12 +63,17 @@ export async function initDb() {
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         name TEXT NOT NULL,
         amount DECIMAL(10, 2) NOT NULL,
-        frequency TEXT NOT NULL CHECK (frequency IN ('monthly', 'weekly', 'bi-weekly', 'yearly')),
+        frequency TEXT NOT NULL DEFAULT 'one-time',
         description TEXT,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
     `);
+
+    // Drop frequency check constraint if it exists to allow one-time/spot/bonus incomes
+    await pool.query(`
+      ALTER TABLE income_sources DROP CONSTRAINT IF EXISTS income_sources_frequency_check;
+    `).catch(() => {});
 
     // Create budgets table (One per user)
     await pool.query(`

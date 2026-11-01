@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import Layout from "@/components/Layout";
 import { ExpenseCategory, categoryEmojis, Expense, getTotalSpent } from "@/lib/expenses";
 import { useAuth } from "@/hooks/use-auth";
+import { QuickAddIncomeModal } from "@/components/QuickAddIncomeModal";
 
 const categories: ExpenseCategory[] = [
   "food",
@@ -671,6 +672,23 @@ function AddExpenseContent() {
                     : "Track your spending and get automatic categorization"}
                 </p>
               </div>
+
+              {!editingExpenseId && (
+                <QuickAddIncomeModal
+                  trigger={
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="gap-2 border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 shadow-sm"
+                    >
+                      <Zap className="w-4 h-4 text-emerald-600" />
+                      <span className="hidden sm:inline">+ Quick Income / Bonus</span>
+                      <span className="sm:hidden">+ Income</span>
+                    </Button>
+                  }
+                  onSuccess={fetchData}
+                />
+              )}
               {editingExpenseId && (
                 <Button
                   variant="outline"

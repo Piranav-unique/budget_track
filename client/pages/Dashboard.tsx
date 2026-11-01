@@ -20,6 +20,7 @@ import {
   Eye,
   Filter,
   Search,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -34,6 +35,7 @@ import {
 import { cn } from "@/lib/utils";
 import Layout from "@/components/Layout";
 import { AIInsights } from "@/components/AIInsights";
+import { QuickAddIncomeModal } from "@/components/QuickAddIncomeModal";
 import { useAIInsights } from "@/hooks/use-ai-insights";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -232,6 +234,12 @@ export default function Dashboard() {
                     <span className="hidden sm:inline">Analytics</span>
                   </Button>
                 </Link>
+                <QuickAddIncomeModal
+                  onSuccess={() => {
+                    loadBudget();
+                    fetchExpenses();
+                  }}
+                />
                 <Link to="/add-expense" className="flex-1 sm:flex-none">
                   <Button className="w-full gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/25 transition-all hover:scale-[1.02] hover:shadow-xl">
                     <Plus className="w-4 h-4" />
@@ -358,9 +366,27 @@ export default function Dashboard() {
                 </div>
                 <div className="space-y-3">
                   <div className="bg-slate-50 rounded-lg p-4">
-                    <p className="text-slate-500 font-medium text-sm mb-1">Monthly Budget</p>
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-slate-500 font-medium text-sm">Monthly Budget</p>
+                      <span className="text-xs font-semibold text-emerald-600">Income: ₹{(budget.income || 0).toLocaleString()}</span>
+                    </div>
                     <p className="font-bold text-foreground text-lg">₹{budget.monthly.toLocaleString()}</p>
                     <p className="text-xs text-slate-400 mt-1">Spent: ₹{monthlySpent.toLocaleString()}</p>
+
+                    <QuickAddIncomeModal
+                      trigger={
+                        <button
+                          type="button"
+                          className="w-full mt-3 py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <Zap className="w-3.5 h-3.5" /> + Add Spot Income / Bonus
+                        </button>
+                      }
+                      onSuccess={() => {
+                        loadBudget();
+                        fetchExpenses();
+                      }}
+                    />
                     {budget.monthly === 0 && (
                       <button
                         type="button"

@@ -28,7 +28,7 @@ export class AIInsightsService {
   private groq: Groq;
   private model: string;
 
-  constructor(model: string = 'llama-3.3-70b-versatile') {
+    constructor(model: string = process.env.GROQ_MODEL || 'openai/gpt-oss-120b') {
     const apiKey = process.env.GROQ_API_KEY || '';
     if (!apiKey || apiKey.trim() === '') {
       throw new Error('GROQ_API_KEY is not configured. Please set the GROQ_API_KEY environment variable.');

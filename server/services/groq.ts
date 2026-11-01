@@ -4,7 +4,7 @@ import Groq from 'groq-sdk';
  * Groq AI Service for expense categorization
  */
 
-const MODEL_NAME = 'llama-3.3-70b-versatile';
+const MODEL_NAME = process.env.GROQ_MODEL || 'openai/gpt-oss-120b';
 
 export type ExpenseCategory =
     | 'food'

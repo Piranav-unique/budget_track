@@ -74,7 +74,7 @@ export default function Login() {
   }
 
   const onSubmit = (data: z.infer<typeof loginSchema>) => {
-    loginMutation.mutate(data, {
+    loginMutation.mutate({ username: data.username!, password: data.password }, {
       onSuccess: () => {
         // Redirect to the page they were trying to access, or dashboard
         const from = (location.state as any)?.from?.pathname || "/";

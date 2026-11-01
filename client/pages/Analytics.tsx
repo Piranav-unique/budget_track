@@ -336,15 +336,6 @@ const AnalyticsContent: React.FC = () => {
                               paddingAngle={3}
                               label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                               labelLine={true}
-                              labelLineLength={20}
-                              labelLineWidth={2}
-                              labelLineStroke="#666"
-                              labelStyle={{
-                                fontSize: '12px',
-                                fill: '#374151',
-                                fontWeight: 500,
-                                textShadow: '0 0 4px white',
-                              }}
                             >
                               {pieData.map((e, i) => (
                                 <Cell 

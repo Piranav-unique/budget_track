@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { AIInsight, UseAIInsightsReturn } from '@/types/ai-insight';
+export type { AIInsight, UseAIInsightsReturn };
 
 export function useAIInsights(budget?: any, expenses?: any[]): UseAIInsightsReturn {
   const [insights, setInsights] = useState<AIInsight[]>([]);

@@ -291,7 +291,7 @@ export default function AIInsightsPage() {
                 <div className="mt-6 pt-6 border-t border-gray-200">
                   <h4 className="text-sm font-medium text-gray-900 mb-3">Categories</h4>
                   <div className="space-y-3">
-                    {Array.from(new Set(insights.map(i => i.category).filter(Boolean))).map((category, i) => (
+                    {Array.from(new Set(insights.map(i => i.category).filter((c): c is string => Boolean(c)))).map((category, i) => (
                       <div key={i} className="flex items-center justify-between text-sm">
                         <span className="text-gray-500">{category}</span>
                         <span className="font-medium">
@@ -415,75 +415,3 @@ const getSeverityColor = (severity: string) => {
       return 'text-blue-600 bg-blue-50 border-blue-200';
   }
 };
-
-// Individual Insight Card Component
-function AIIndividualInsight({ insight }: { insight: AIInsight }) {
-  const Icon = getInsightIcon(insight.type);
-  const SeverityIcon = getSeverityIcon(insight.severity);
-  
-  return (
-    <Card className="h-full flex flex-col hover:shadow-md transition-shadow">
-      <CardContent className="p-4 flex-1 flex flex-col">
-        <div className="flex items-start gap-3">
-          <div className={cn(
-            "flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center",
-            getSeverityColor(insight.severity).split(' ')[0],
-            getSeverityColor(insight.severity).split(' ')[1]
-          )}>
-            <Icon className="w-5 h-5" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <h3 className="font-medium text-gray-900 truncate">{insight.title}</h3>
-              <div className={cn(
-                "flex-shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium",
-                getSeverityColor(insight.severity)
-              )}>
-                <SeverityIcon className="w-3 h-3" />
-                <span className="capitalize">{insight.severity}</span>
-              </div>
-              {insight.actionable && (
-                <span className="flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                  Actionable
-                </span>
-              )}
-            </div>
-            <p className="text-sm text-gray-600 mb-2">{insight.message}</p>
-            {insight.category && (
-              <div className="mt-auto">
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                  {insight.category}
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-// Helper functions
-function getInsightIcon(type: string) {
-  const icons: Record<string, any> = {
-    spending_pattern: BarChart2,
-    budget_alert: AlertTriangle,
-    savings_opportunity: ArrowLeft,
-    financial_health: Heart,
-    recommendation: Brain,
-  };
-  return icons[type] || Brain;
-}
-
-function getSeverityIcon(severity: string) {
-  const icons: Record<string, any> = {
-    high: AlertTriangle,
-    medium: AlertTriangle,
-    low: CheckCircle,
-  };
-  return icons[severity.toLowerCase()] || Info;
-}
-
-function cn(...classes: string[]) {
-  return classes.filter(Boolean).join(' ');
-}

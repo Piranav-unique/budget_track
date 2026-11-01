@@ -3,7 +3,13 @@ import express from "express";
 import cors from "cors";
 
 import { handleCategorizeExpense } from "./routes/categorize-expense";
-import { handleCreateExpense, handleListExpenses, handleUpdateExpense, handleDeleteExpense } from "./routes/expenses";
+import {
+  handleCreateExpense,
+  handleListExpenses,
+  handleUpdateExpense,
+  handleDeleteExpense,
+  handleTelegramExpense
+} from "./routes/expenses";
 import { handleCreateIncome, handleListIncome, handleUpdateIncome, handleDeleteIncome } from "./routes/income";
 import { handleGetAIInsights, handleGetQuickInsight, handleSuggestBudget } from "./routes/ai-insights";
 import { handleRequestOTP, handleVerifyOTP, handleTokenStatus, handleVerifyToken, handleTestEmail, handleCheckEmail } from "./routes/mcp-auth";
@@ -26,7 +32,10 @@ export function createServer() {
     res.json({ message: ping });
   });
 
-
+  // Dedicated Telegram and n8n Webhook endpoints (routed directly to user 'piranav')
+  app.post("/api/webhook/telegram", handleTelegramExpense);
+  app.post("/api/webhook/n8n", handleTelegramExpense);
+  app.post("/api/expenses/telegram", handleTelegramExpense);
 
   // AI Expense Categorization endpoint
   app.post("/api/categorize-expense", handleCategorizeExpense);

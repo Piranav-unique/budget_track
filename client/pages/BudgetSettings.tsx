@@ -16,10 +16,10 @@ function BudgetSettingsContent() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [budget, setBudget] = useState<Budget>({
-    monthly: 2000,
-    weekly: 500,
-    savingsGoal: 500,
-    income: 5000,
+    monthly: 20000,
+    weekly: 5000,
+    savingsGoal: 10000,
+    income: 30000,
   });
   const [saved, setSaved] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -35,8 +35,10 @@ function BudgetSettingsContent() {
           const parsed = JSON.parse(saved);
           setBudget({
             ...parsed,
-            income: parsed.income || 5000,
-            weekly: parsed.weekly || Math.round((parsed.monthly || 2000) / 4)
+            income: parsed.income || 30000,
+            monthly: parsed.monthly || 20000,
+            weekly: parsed.weekly || Math.round((parsed.monthly || 20000) / 4),
+            savingsGoal: parsed.savingsGoal !== undefined ? parsed.savingsGoal : 10000
           });
         } catch (e) {
           console.error("Error loading budget:", e);
@@ -273,12 +275,41 @@ function BudgetSettingsContent() {
                     value={budget.income || 0}
                     onChange={(value) => handleChange("income", value.toString())}
                     min={0}
-                    max={10000}
-                    step={50}
+                    max={Math.max(100000, (budget.income || 0) * 1.5)}
+                    step={500}
                     gradient={["#3b82f6", "#8b5cf6"]}
                     helperText="Include salary, pocket money, scholarships, or any other income source."
                     showInput={true}
                   />
+                  <div className="flex flex-wrap items-center gap-2 mt-4">
+                    <span className="text-xs font-semibold text-slate-500 mr-1">Quick Salary:</span>
+                    {[15000, 25000, 30000, 45000, 60000, 100000].map((amt) => (
+                      <button
+                        key={amt}
+                        type="button"
+                        onClick={() => {
+                          handleChange("income", amt.toString());
+                          if (amt === 30000) {
+                            setBudget((prev) => ({
+                              ...prev,
+                              income: 30000,
+                              monthly: 20000,
+                              weekly: 5000,
+                              savingsGoal: 10000,
+                            }));
+                          }
+                        }}
+                        className={cn(
+                          "px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer",
+                          budget.income === amt
+                            ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+                            : "bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200"
+                        )}
+                      >
+                        ₹{amt.toLocaleString()}{amt === 30000 ? " (30k Salary)" : ""}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
@@ -311,13 +342,31 @@ function BudgetSettingsContent() {
                     value={budget.monthly}
                     onChange={(value) => handleChange("monthly", value.toString())}
                     min={0}
-                    max={budget.income || 10000}
-                    step={10}
+                    max={Math.max(100000, budget.income || 30000)}
+                    step={250}
                     gradient={["#10b981", "#06b6d4"]}
                     helperText="Stay within this limit to maintain a healthy financial state."
                     error={errors.monthly}
                     showInput={true}
                   />
+                  <div className="flex flex-wrap items-center gap-2 mt-4">
+                    <span className="text-xs font-semibold text-slate-500 mr-1">Quick Limits:</span>
+                    {[10000, 15000, 20000, 25000, 30000].map((amt) => (
+                      <button
+                        key={amt}
+                        type="button"
+                        onClick={() => handleChange("monthly", amt.toString())}
+                        className={cn(
+                          "px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer",
+                          budget.monthly === amt
+                            ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
+                            : "bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200"
+                        )}
+                      >
+                        ₹{amt.toLocaleString()}{amt === 30000 ? " (30k Limit)" : ""}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="bg-[#f8fafc] rounded-2xl p-6 grid grid-cols-1 sm:grid-cols-3 gap-8">
@@ -365,13 +414,31 @@ function BudgetSettingsContent() {
                     value={budget.savingsGoal}
                     onChange={(value) => handleChange("savingsGoal", value.toString())}
                     min={0}
-                    max={budget.income || 10000}
-                    step={10}
+                    max={Math.max(100000, budget.income || 30000)}
+                    step={250}
                     gradient={["#8b5cf6", "#6366f1"]}
                     helperText="Consistent saving is the key to financial freedom."
                     error={errors.savingsGoal}
                     showInput={true}
                   />
+                  <div className="flex flex-wrap items-center gap-2 mt-4">
+                    <span className="text-xs font-semibold text-slate-500 mr-1">Quick Targets:</span>
+                    {[5000, 10000, 15000, 20000].map((amt) => (
+                      <button
+                        key={amt}
+                        type="button"
+                        onClick={() => handleChange("savingsGoal", amt.toString())}
+                        className={cn(
+                          "px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer",
+                          budget.savingsGoal === amt
+                            ? "bg-purple-600 text-white border-purple-600 shadow-sm"
+                            : "bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200"
+                        )}
+                      >
+                        ₹{amt.toLocaleString()}{amt === 10000 ? " (10k Savings)" : ""}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>

@@ -361,6 +361,20 @@ export default function Dashboard() {
                     <p className="text-slate-500 font-medium text-sm mb-1">Monthly Budget</p>
                     <p className="font-bold text-foreground text-lg">₹{budget.monthly.toLocaleString()}</p>
                     <p className="text-xs text-slate-400 mt-1">Spent: ₹{monthlySpent.toLocaleString()}</p>
+                    {budget.monthly === 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const budgetKey = user ? `budget_${user.id}` : 'budget';
+                          const b30k = { monthly: 20000, weekly: 5000, savingsGoal: 10000, income: 30000 };
+                          localStorage.setItem(budgetKey, JSON.stringify(b30k));
+                          window.dispatchEvent(new Event('budgetUpdated'));
+                        }}
+                        className="w-full mt-3 py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <Sparkles className="w-3.5 h-3.5" /> Quick Set ₹30,000 (30k) Budget
+                      </button>
+                    )}
                   </div>
                 </div>
               </CardContent>

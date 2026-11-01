@@ -27,18 +27,25 @@ export interface CreateExpenseRequest {
   category?: string;
   date?: string;
   note?: string;
-  userId?: string;
+  userId?: string | number;
+  chat_id?: string;
+  source?: string;
 }
 
 export interface CreateExpenseResponse {
-  _id: string;
+  _id?: string;
+  id?: number | string;
   description: string;
   amount: number;
   category: string;
   note: string | null;
   date: string;
-  createdAt: string;
-  userId: string | null;
+  createdAt?: string;
+  created_at?: string;
+  userId?: string | number | null;
+  user_id?: string | number | null;
+  chat_id?: string | null;
+  source?: string | null;
 }
 
 export interface User {
@@ -51,4 +58,3 @@ export interface User {
 }
 
 export type InsertUser = Pick<User, 'username' | 'password' | 'display_name' | 'email' | 'provider'>;
-

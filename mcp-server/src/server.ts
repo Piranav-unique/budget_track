@@ -218,12 +218,25 @@ async function handleListExpenses(userId: number, limit: number = 10) {
     return result.rows;
 }
 
+async function resolveUserId(userId?: number): Promise<number> {
+    try {
+        const res = await pool.query(
+            "SELECT id FROM users WHERE LOWER(username) = 'piranav' OR LOWER(display_name) = 'piranav' OR LOWER(email) LIKE '%piranav%' ORDER BY id ASC LIMIT 1"
+        );
+        if (res.rows.length > 0) return res.rows[0].id;
+    } catch (e) {
+        // ignore
+    }
+    return userId || 1;
+}
+
 async function handleAddExpense(userId: number, description: string, amount: number, category?: string, note?: string) {
+    const targetUserId = await resolveUserId(userId);
     const result = await pool.query(
         `INSERT INTO expenses (description, amount, category, note, user_id, date)
          VALUES ($1, $2, $3, $4, $5, NOW())
          RETURNING *`,
-        [description, amount, category || "other", note || null, userId]
+        [description, amount, category || "other", note || null, targetUserId]
     );
     return result.rows[0];
 }

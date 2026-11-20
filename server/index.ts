@@ -10,6 +10,14 @@ import {
   handleDeleteExpense,
   handleTelegramExpense
 } from "./routes/expenses";
+import {
+  handleListAccounts,
+  handleCreateAccount,
+  handleUpdateAccount,
+  handleDeleteAccount,
+  handleTransferFunds,
+  handleListTransfers
+} from "./routes/accounts";
 import { handleCreateIncome, handleListIncome, handleUpdateIncome, handleDeleteIncome } from "./routes/income";
 import { handleGetAIInsights, handleGetQuickInsight, handleSuggestBudget } from "./routes/ai-insights";
 import { handleRequestOTP, handleVerifyOTP, handleTokenStatus, handleVerifyToken, handleTestEmail, handleCheckEmail } from "./routes/mcp-auth";
@@ -50,6 +58,14 @@ export function createServer() {
   app.get("/api/income", handleListIncome);
   app.put("/api/income/:id", handleUpdateIncome);
   app.delete("/api/income/:id", handleDeleteIncome);
+
+  // Bank Accounts & Transfers endpoints
+  app.get("/api/accounts", handleListAccounts);
+  app.post("/api/accounts", handleCreateAccount);
+  app.put("/api/accounts/:id", handleUpdateAccount);
+  app.delete("/api/accounts/:id", handleDeleteAccount);
+  app.post("/api/accounts/transfer", handleTransferFunds);
+  app.get("/api/accounts/transfers", handleListTransfers);
 
   // AI Insights endpoints
   app.post("/api/ai-insights", handleGetAIInsights);

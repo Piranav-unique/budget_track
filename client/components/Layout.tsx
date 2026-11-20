@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { useState } from "react";
-import { Menu, X, Wallet, BarChart3, Settings, Plus, Home, Zap } from "lucide-react";
+import { Menu, X, Wallet, BarChart3, Settings, Plus, Home, Zap, Landmark } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { QuickAddIncomeModal } from "@/components/QuickAddIncomeModal";
 
@@ -14,6 +14,7 @@ export default function Layout({ children }: LayoutProps) {
 
   const navItems = [
     { path: "/", label: "Dashboard", icon: Home },
+    { path: "/accounts", label: "Bank Accounts", icon: Landmark },
     { path: "/add-expense", label: "Add Expense", icon: Plus },
     { path: "/budget", label: "Budget", icon: Wallet },
     { path: "/analytics", label: "Analytics", icon: BarChart3 },

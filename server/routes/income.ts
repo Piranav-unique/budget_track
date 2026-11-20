@@ -81,6 +81,18 @@ export const handleCreateIncome: RequestHandler = async (req, res) => {
     const income = result.rows[0];
     console.log(`✅ [Income Added] ₹${parsedAmount} (${name} - ${resolvedFrequency}) for user ID: ${targetUserId}`);
 
+    // Auto-credit primary or savings bank account
+    try {
+      await pool.query(
+        `UPDATE bank_accounts
+         SET balance = balance + $1, updated_at = NOW()
+         WHERE user_id = $2 AND (is_primary = true OR type = 'savings')`,
+        [parsedAmount, targetUserId]
+      );
+    } catch (e) {
+      console.warn("Could not auto-credit bank account for income:", e);
+    }
+
     return res.status(201).json({
       success: true,
       message: `Income of ₹${parsedAmount} for "${name}" added successfully.`,

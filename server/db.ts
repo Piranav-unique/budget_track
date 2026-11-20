@@ -113,6 +113,37 @@ export async function initDb() {
       );
     `);
 
+    // Create bank_accounts table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS bank_accounts (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        type TEXT NOT NULL DEFAULT 'current',
+        account_number TEXT,
+        bank_name TEXT,
+        balance DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
+        currency TEXT NOT NULL DEFAULT 'INR',
+        is_primary BOOLEAN DEFAULT FALSE,
+        color TEXT DEFAULT 'blue',
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Create account_transfers table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS account_transfers (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        from_account_id INTEGER REFERENCES bank_accounts(id) ON DELETE CASCADE,
+        to_account_id INTEGER REFERENCES bank_accounts(id) ON DELETE CASCADE,
+        amount DECIMAL(12, 2) NOT NULL,
+        note TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
     // Create indexes for faster lookups
     await pool.query(`
       CREATE INDEX IF NOT EXISTS idx_mcp_otp_user_email ON mcp_otp_codes(user_id, email);

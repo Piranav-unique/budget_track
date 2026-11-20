@@ -16,6 +16,7 @@ import Register from "./pages/Register";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import MCPConnection from "./pages/MCPConnection";
+import Accounts from "./pages/Accounts";
 import NotFound from "./pages/NotFound";
 import { AuthProvider } from "./hooks/use-auth";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -41,6 +42,7 @@ const App = () => (
             <Route path="/dashboard" element={<ProtectedRoute><Index /></ProtectedRoute>} />
             <Route path="/add-expense" element={<ProtectedRoute><AddExpense /></ProtectedRoute>} />
             <Route path="/budget" element={<ProtectedRoute><BudgetSettings /></ProtectedRoute>} />
+            <Route path="/accounts" element={<ProtectedRoute><Accounts /></ProtectedRoute>} />
             <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             <Route path="/mcp-connection" element={<ProtectedRoute><MCPConnection /></ProtectedRoute>} />

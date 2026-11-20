@@ -24,6 +24,8 @@ import {
   Briefcase,
   Building2,
   CheckCircle2,
+  Landmark,
+  ArrowRightLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -63,6 +65,7 @@ export default function Dashboard() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [bankAccounts, setBankAccounts] = useState<any[]>([]);
   const [isLoggingCorporate, setIsLoggingCorporate] = useState(false);
   const [budget, setBudget] = useState<Budget>({
     monthly: 0,
@@ -70,6 +73,18 @@ export default function Dashboard() {
     savingsGoal: 0,
     income: 0,
   });
+
+  const fetchAccounts = async () => {
+    try {
+      const res = await fetch("/api/accounts");
+      if (res.ok) {
+        const data = await res.json();
+        setBankAccounts(data.accounts || []);
+      }
+    } catch (e) {
+      console.warn("Could not load accounts:", e);
+    }
+  };
 
 
   // AI Insights hook
@@ -134,6 +149,7 @@ export default function Dashboard() {
       }
 
       await fetchExpenses();
+      await fetchAccounts();
       toast({
         title: "🏢 Corporate Spend Logged!",
         description: "Recorded ₹50 daily office spend charged to Current Bank Account.",
@@ -180,7 +196,11 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchExpenses();
-    const interval = setInterval(fetchExpenses, 10000); // Poll every 10s
+    fetchAccounts();
+    const interval = setInterval(() => {
+      fetchExpenses();
+      fetchAccounts();
+    }, 10000); // Poll every 10s
 
     loadBudget();
 
@@ -589,6 +609,57 @@ export default function Dashboard() {
                   </Button>
                 </Link>
               </div>
+            </div>
+          </div>
+
+          {/* Linked Bank Accounts Live Balance Widget */}
+          <div className="bg-white rounded-3xl p-6 md:p-8 border border-border shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white flex items-center justify-center shadow-md shadow-blue-500/20">
+                  <Landmark className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-foreground text-xl flex items-center gap-2">
+                    Linked Bank Accounts & Liquid Balances
+                    <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      Live Ledger
+                    </span>
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Real-time balances across your Current Bank Account, Savings, UPI & Cash
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Link to="/accounts">
+                  <Button variant="outline" size="sm" className="gap-2">
+                    <ArrowRightLeft className="w-3.5 h-3.5" /> Transfer / Manage Accounts
+                  </Button>
+                </Link>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {bankAccounts.map((acc) => (
+                <Link
+                  key={acc.id}
+                  to="/accounts"
+                  className="p-5 rounded-2xl border border-slate-100 hover:border-blue-300 bg-slate-50/60 hover:bg-blue-50/30 transition-all group shadow-sm hover:shadow"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-bold text-slate-600 truncate">{acc.name}</span>
+                    <span className="text-[10px] text-slate-400 font-mono">{acc.account_number}</span>
+                  </div>
+                  <p className="text-2xl font-extrabold text-foreground group-hover:text-blue-600 transition-colors">
+                    ₹{Number(acc.balance).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                  </p>
+                  <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-200/60 text-[10px] text-slate-400">
+                    <span className="capitalize">{acc.bank_name || acc.type}</span>
+                    <span className="text-blue-600 font-semibold group-hover:translate-x-0.5 transition-transform">View ➔</span>
+                  </div>
+                </Link>
+              ))}
             </div>
           </div>
 

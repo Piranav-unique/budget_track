@@ -139,6 +139,26 @@ export const handleCreateExpense: RequestHandler = async (req, res) => {
 
     const expense = result.rows[0];
 
+    // Auto-deduct from matching bank account balance
+    if (effectiveSource) {
+      try {
+        await pool.query(
+          `UPDATE bank_accounts
+           SET balance = balance - $1, updated_at = NOW()
+           WHERE user_id = $2 AND (
+             LOWER(name) = LOWER($3) OR 
+             (LOWER($3) LIKE '%current%' AND LOWER(type) = 'current') OR
+             (LOWER($3) LIKE '%saving%' AND LOWER(type) = 'savings') OR
+             (LOWER($3) LIKE '%upi%' AND LOWER(type) = 'upi') OR
+             (LOWER($3) LIKE '%cash%' AND LOWER(type) = 'cash')
+           )`,
+          [parsedAmount, targetUserId, effectiveSource]
+        );
+      } catch (err) {
+        console.warn("Could not auto-deduct from bank account:", err);
+      }
+    }
+
     // Notify outbound n8n workflow only if this expense did NOT come from n8n/telegram
     if (!isTelegramOrN8n) {
       try {
@@ -419,6 +439,26 @@ export const handleDeleteExpense: RequestHandler = async (req, res) => {
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: "Expense not found or access denied" });
+    }
+
+    const deleted = result.rows[0];
+    if (deleted && deleted.source) {
+      try {
+        await pool.query(
+          `UPDATE bank_accounts
+           SET balance = balance + $1, updated_at = NOW()
+           WHERE user_id = $2 AND (
+             LOWER(name) = LOWER($3) OR 
+             (LOWER($3) LIKE '%current%' AND LOWER(type) = 'current') OR
+             (LOWER($3) LIKE '%saving%' AND LOWER(type) = 'savings') OR
+             (LOWER($3) LIKE '%upi%' AND LOWER(type) = 'upi') OR
+             (LOWER($3) LIKE '%cash%' AND LOWER(type) = 'cash')
+           )`,
+          [Number(deleted.amount), user.id, deleted.source]
+        );
+      } catch (err) {
+        console.warn("Could not restore bank balance:", err);
+      }
     }
 
     return res.status(200).json({ message: "Expense deleted successfully" });

@@ -116,7 +116,7 @@ export const handleCreateExpense: RequestHandler = async (req, res) => {
     }
 
     const effectiveChatId = chat_id || chatId || null;
-    const effectiveSource = source || (isTelegramOrN8n ? "telegram" : "web");
+    const effectiveSource = source || (isTelegramOrN8n ? "telegram" : "Current Bank Account");
 
     const result = await pool.query(
       `INSERT INTO expenses (
@@ -348,7 +348,7 @@ export const handleUpdateExpense: RequestHandler = async (req, res) => {
 
     const user = req.user as User;
     const { id } = req.params;
-    const { description, amount, category, date, note } = req.body ?? {};
+    const { description, amount, category, date, note, source } = req.body ?? {};
 
     if (!id) {
       return res.status(400).json({ error: "expense id is required" });
@@ -371,8 +371,8 @@ export const handleUpdateExpense: RequestHandler = async (req, res) => {
     // Update expense only if it belongs to the authenticated user
     const result = await pool.query(
       `UPDATE expenses 
-       SET description = $1, amount = $2, category = $3, date = $4, note = $5
-       WHERE id = $6 AND user_id = $7
+       SET description = $1, amount = $2, category = $3, date = $4, note = $5, source = COALESCE($6, source)
+       WHERE id = $7 AND user_id = $8
        RETURNING *`,
       [
         description,
@@ -380,6 +380,7 @@ export const handleUpdateExpense: RequestHandler = async (req, res) => {
         category || "other",
         parsedDate.toISOString(),
         note || null,
+        source || null,
         id,
         user.id
       ]

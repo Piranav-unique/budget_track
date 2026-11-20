@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { AIInsightsService } from '../services/ai-insights';
 import { pool } from '../db';
 import { User } from '../../shared/api';
+import { getGroqApiKey } from '../services/groq';
 
 export async function handleGetAIInsights(req: Request, res: Response) {
   try {
@@ -34,33 +35,13 @@ export async function handleGetAIInsights(req: Request, res: Response) {
 
     // Get budget from request body or use defaults
     const budget = req.body.budget || {
-      monthly: 0,
-      weekly: 0,
-      savingsGoal: 0
+      monthly: 20000,
+      weekly: 5000,
+      savingsGoal: 10000
     };
 
-    // Check if API key is configured before initializing service
-    if (!process.env.GROQ_API_KEY || process.env.GROQ_API_KEY.trim() === '') {
-      return res.status(503).json({
-        success: false,
-        error: 'AI service not configured',
-        message: 'GROQ_API_KEY environment variable is not set. Please configure the API key to use AI insights.',
-        suggestion: 'Add GROQ_API_KEY to your .env file. Get your API key from https://console.groq.com/'
-      });
-    }
-
     // Initialize AI service
-    let aiService: AIInsightsService;
-    try {
-      aiService = new AIInsightsService();
-    } catch (error) {
-      return res.status(503).json({
-        success: false,
-        error: 'AI service configuration error',
-        message: error instanceof Error ? error.message : 'Failed to initialize AI service',
-        suggestion: 'Please check your GROQ_API_KEY configuration'
-      });
-    }
+    const aiService = new AIInsightsService();
 
     // Generate insights
     const insights = await aiService.generateInsights(expenses, budget);
@@ -75,28 +56,16 @@ export async function handleGetAIInsights(req: Request, res: Response) {
   } catch (error) {
     console.error('Error generating AI insights:', error);
 
-    // Determine appropriate status code and message
-    let statusCode = 503;
-    let errorMessage = 'AI service unavailable';
-    let suggestion = 'Please ensure your Groq API key is valid and configured';
+    // Fallback safe insights rather than returning 503 error
+    const aiService = new AIInsightsService();
+    const fallbackInsights = await aiService.generateInsights([], { monthly: 20000, weekly: 5000, savingsGoal: 10000 });
 
-    if (error instanceof Error) {
-      if (error.message.includes('authentication') || error.message.includes('API key') || error.message.includes('not configured')) {
-        statusCode = 503;
-        errorMessage = 'AI service authentication error';
-        suggestion = 'Please configure GROQ_API_KEY in your environment variables. Get your API key from https://console.groq.com/';
-      } else if (error.message.includes('rate limit') || error.message.includes('429')) {
-        statusCode = 429;
-        errorMessage = 'AI service rate limit exceeded';
-        suggestion = 'Please try again later or check your API usage limits';
-      }
-    }
-
-    res.status(statusCode).json({
-      success: false,
-      error: errorMessage,
-      message: error instanceof Error ? error.message : 'Unknown error',
-      suggestion
+    res.json({
+      success: true,
+      insights: fallbackInsights,
+      timestamp: new Date().toISOString(),
+      expenseCount: 0,
+      source: 'fallback'
     });
   }
 }
@@ -105,15 +74,11 @@ export async function handleGetQuickInsight(req: Request, res: Response) {
   try {
     const { expenseData, budget } = req.body;
 
-    if (!expenseData || !budget) {
-      return res.status(400).json({
-        success: false,
-        error: 'Missing expense data or budget information'
-      });
-    }
+    const safeBudget = budget || { monthly: 20000, weekly: 5000, savingsGoal: 10000 };
+    const safeExpenses = expenseData || [];
 
     const aiService = new AIInsightsService();
-    const insights = await aiService.generateInsights(expenseData, budget);
+    const insights = await aiService.generateInsights(safeExpenses, safeBudget);
 
     res.json({
       success: true,

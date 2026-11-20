@@ -21,6 +21,9 @@ import {
   Filter,
   Search,
   Zap,
+  Briefcase,
+  Building2,
+  CheckCircle2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -31,6 +34,8 @@ import {
   categoryEmojis,
   categoryColors,
   getTotalSpent,
+  PAYMENT_ACCOUNTS,
+  getAccountBadge,
 } from "@/lib/expenses";
 import { cn } from "@/lib/utils";
 import Layout from "@/components/Layout";
@@ -38,6 +43,7 @@ import { AIInsights } from "@/components/AIInsights";
 import { QuickAddIncomeModal } from "@/components/QuickAddIncomeModal";
 import { useAIInsights } from "@/hooks/use-ai-insights";
 import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 
 // Helper to remove extra quotes if they exist from CSV import or similar
 const cleanValue = (val: string | undefined | null) => {
@@ -45,9 +51,19 @@ const cleanValue = (val: string | undefined | null) => {
   return val.replace(/^"+|"+$/g, "").trim();
 };
 
+const PIRANAV_INCOME_UPDATE_KEY = "piranav_monthly_income_update_v1";
+
+function isPiranavUser(user: { username?: string; display_name?: string; email?: string } | null) {
+  return [user?.username, user?.display_name, user?.email]
+    .filter(Boolean)
+    .some((value) => value!.toLowerCase().includes("piranav"));
+}
+
 export default function Dashboard() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [isLoggingCorporate, setIsLoggingCorporate] = useState(false);
   const [budget, setBudget] = useState<Budget>({
     monthly: 0,
     weekly: 0,
@@ -85,6 +101,7 @@ export default function Dashboard() {
           amount: Number(cleanValue(String(e.amount ?? 0))),
           category: (rawCategory?.toLowerCase() ?? "other") as ExpenseCategory,
           note: e.note ?? undefined,
+          source: e.source || "Current Bank Account",
           date: new Date(rawDate || Date.now()),
         };
       });
@@ -96,6 +113,43 @@ export default function Dashboard() {
     }
   };
 
+  const handleQuickLogCorporate50 = async () => {
+    setIsLoggingCorporate(true);
+    try {
+      const res = await fetch("/api/expenses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          description: "Daily Corporate Spend (Office / Tea / Snacks)",
+          amount: 50,
+          category: "food",
+          date: new Date().toISOString().split("T")[0],
+          source: "Current Bank Account",
+          note: "Corporate company daily spend of ₹50 logged via 1-click",
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to log corporate spend");
+      }
+
+      await fetchExpenses();
+      toast({
+        title: "🏢 Corporate Spend Logged!",
+        description: "Recorded ₹50 daily office spend charged to Current Bank Account.",
+      });
+    } catch (err) {
+      console.error("Corporate log error:", err);
+      toast({
+        title: "Error",
+        description: "Failed to log ₹50 expense. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoggingCorporate(false);
+    }
+  };
+
   const loadBudget = () => {
     if (user) {
       const budgetKey = `budget_${user.id}`;
@@ -103,6 +157,13 @@ export default function Dashboard() {
       if (savedBudget) {
         try {
           const parsed = JSON.parse(savedBudget);
+          const shouldUpdatePiranavIncome =
+            isPiranavUser(user) && localStorage.getItem(PIRANAV_INCOME_UPDATE_KEY) !== "true";
+          if (shouldUpdatePiranavIncome) {
+            parsed.income = 0;
+            localStorage.setItem(budgetKey, JSON.stringify(parsed));
+            localStorage.setItem(PIRANAV_INCOME_UPDATE_KEY, "true");
+          }
           setBudget({
             monthly: parsed.monthly || 0,
             weekly: parsed.weekly || Math.round((parsed.monthly || 0) / 4),
@@ -172,6 +233,31 @@ export default function Dashboard() {
       category: cat as ExpenseCategory,
       amount,
     }));
+
+  // Corporate Spend Calculations
+  const isSameDay = (d1: Date, d2: Date) =>
+    d1.getFullYear() === d2.getFullYear() &&
+    d1.getMonth() === d2.getMonth() &&
+    d1.getDate() === d2.getDate();
+
+  const todayCorporateExpenses = expenses.filter(
+    (e) => isSameDay(e.date, now) && (
+      (e.description && e.description.toLowerCase().includes("corporate")) ||
+      (e.amount === 50 && (e.category === "food" || (e.source && e.source.toLowerCase().includes("current"))))
+    )
+  );
+
+  const isCorporateLoggedToday = todayCorporateExpenses.length > 0;
+  const corporateLoggedTodayAmount = todayCorporateExpenses.reduce((sum, e) => sum + e.amount, 0);
+
+  const monthlyCorporateExpenses = expenses.filter(
+    (e) => e.date >= monthStart && e.date <= monthEnd && (
+      (e.description && e.description.toLowerCase().includes("corporate")) ||
+      (e.amount === 50 && e.category === "food")
+    )
+  );
+  const monthlyCorporateTotal = monthlyCorporateExpenses.reduce((sum, e) => sum + e.amount, 0);
+  const daysLoggedThisMonth = monthlyCorporateExpenses.length;
 
   return (
     <Layout>
@@ -429,6 +515,83 @@ export default function Dashboard() {
             />
           </div>
 
+          {/* Daily Corporate Company Spend Tracker Card */}
+          <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-6 md:p-8 shadow-xl relative overflow-hidden border border-indigo-900/40">
+            <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
+              <Building2 className="w-48 h-48 text-blue-400" />
+            </div>
+            <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+              <div className="space-y-3 max-w-2xl">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 border border-blue-400/30 uppercase tracking-wider flex items-center gap-1.5">
+                    <Briefcase className="w-3.5 h-3.5" /> Corporate Spend
+                  </span>
+                  <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+                    🏢 Current Bank Account
+                  </span>
+                  {isCorporateLoggedToday ? (
+                    <span className="text-xs font-bold px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Logged Today: ₹{corporateLoggedTodayAmount}
+                    </span>
+                  ) : (
+                    <span className="text-xs font-bold px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/30 flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5 text-amber-400" /> Pending for Today
+                    </span>
+                  )}
+                </div>
+
+                <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white">
+                  Corporate Daily Spend: <span className="text-blue-400">₹50 / Day</span>
+                </h2>
+                <p className="text-slate-300 text-sm md:text-base leading-relaxed">
+                  Track your routine daily company office expenses (tea, coffee, snacks, lunch allowance). Automatically debited from your <strong>Current Bank Account</strong>.
+                </p>
+
+                <div className="flex flex-wrap items-center gap-4 text-xs md:text-sm text-slate-300 pt-2 border-t border-slate-800">
+                  <div>
+                    <span className="text-slate-400">This Month Logged: </span>
+                    <span className="font-bold text-white">₹{monthlyCorporateTotal.toLocaleString()}</span>
+                    <span className="text-slate-400"> ({daysLoggedThisMonth} {daysLoggedThisMonth === 1 ? 'day' : 'days'})</span>
+                  </div>
+                  <div className="hidden sm:inline text-slate-600">•</div>
+                  <div>
+                    <span className="text-slate-400">Monthly Routine Allowance: </span>
+                    <span className="font-bold text-blue-300">₹1,500</span>
+                    <span className="text-slate-400"> (within ₹30,000 monthly income)</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row lg:flex-col gap-3 min-w-[230px]">
+                <Button
+                  onClick={handleQuickLogCorporate50}
+                  disabled={isLoggingCorporate}
+                  className={cn(
+                    "w-full py-6 px-6 rounded-2xl font-bold text-base shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer",
+                    isCorporateLoggedToday
+                      ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-500/20"
+                      : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-blue-500/30 hover:scale-[1.02]"
+                  )}
+                >
+                  <Zap className="w-5 h-5 text-amber-300" />
+                  {isLoggingCorporate
+                    ? "Logging ₹50..."
+                    : isCorporateLoggedToday
+                      ? "+ Log Another ₹50"
+                      : "⚡ Log Today's ₹50"}
+                </Button>
+                <Link to="/add-expense">
+                  <Button
+                    variant="outline"
+                    className="w-full rounded-2xl border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-slate-200 text-xs font-semibold py-4"
+                  >
+                    Custom Corporate Expense
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </div>
+
           {/* Main Content Area */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Recent Activity */}
@@ -482,12 +645,17 @@ export default function Dashboard() {
                             <p className="font-semibold text-foreground">
                               {expense.description}
                             </p>
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mt-1">
                               <span className="capitalize px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">
                                 {expense.category}
                               </span>
                               <span>•</span>
                               <span>{expense.date.toLocaleDateString()}</span>
+                              <span>•</span>
+                              <span className={cn("text-[10px] font-semibold px-2 py-0.5 rounded-full border flex items-center gap-1", getAccountBadge(expense.source).color)}>
+                                <span>{getAccountBadge(expense.source).icon}</span>
+                                <span>{getAccountBadge(expense.source).label}</span>
+                              </span>
                             </div>
                           </div>
                         </div>

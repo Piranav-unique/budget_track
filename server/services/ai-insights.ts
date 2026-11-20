@@ -1,4 +1,5 @@
 import Groq from 'groq-sdk';
+import { getGroqApiKey } from './groq';
 
 export interface ExpenseData {
   id: string;
@@ -28,18 +29,16 @@ export class AIInsightsService {
   private groq: Groq;
   private model: string;
 
-    constructor(model: string = process.env.GROQ_MODEL || 'openai/gpt-oss-120b') {
-    const apiKey = process.env.GROQ_API_KEY || '';
-    if (!apiKey || apiKey.trim() === '') {
-      throw new Error('GROQ_API_KEY is not configured. Please set the GROQ_API_KEY environment variable.');
-    }
+  constructor(model: string = process.env.GROQ_MODEL || 'openai/gpt-oss-120b') {
+    const apiKey = getGroqApiKey();
     this.groq = new Groq({ apiKey });
     this.model = model;
   }
 
   async suggestBudget(income: number): Promise<{ monthlySpend: number; savingsGoal: number; explanation: string }> {
     try {
-      if (!process.env.GROQ_API_KEY || process.env.GROQ_API_KEY.trim() === '') {
+      const apiKey = getGroqApiKey();
+      if (!apiKey) {
         throw new Error('GROQ_API_KEY is not configured.');
       }
 
@@ -48,7 +47,7 @@ export class AIInsightsService {
         messages: [
           {
             role: 'system',
-            content: `You are a professional financial planner. Based on the user's monthly income, suggest a balanced budget using the 50/30/20 rule or an optimized variation for students/low-income earners.
+            content: `You are a professional financial planner. Based on the user's monthly income, suggest a balanced budget using the 50/30/20 rule or an optimized variation for young professionals / corporate employees.
             
             CRITICAL: Respond ONLY with valid JSON - no other text.
             
@@ -89,14 +88,42 @@ export class AIInsightsService {
 
   async generateInsights(expenses: ExpenseData[], budget: BudgetData): Promise<AIInsight[]> {
     try {
-      // Check if API key is still valid
-      if (!process.env.GROQ_API_KEY || process.env.GROQ_API_KEY.trim() === '') {
-        throw new Error('GROQ_API_KEY is not configured. Please set the GROQ_API_KEY environment variable.');
+      const apiKey = getGroqApiKey();
+      if (!apiKey) {
+        throw new Error('GROQ_API_KEY is not configured.');
+      }
+
+      // If user has no expenses yet, provide encouraging onboarding starter insights
+      if (!expenses || expenses.length === 0) {
+        const safeMonthly = budget.monthly > 0 ? budget.monthly : 20000;
+        const safeSavings = budget.savingsGoal > 0 ? budget.savingsGoal : 10000;
+        return [
+          {
+            type: 'financial_health',
+            title: 'Welcome to SmartSpend Flow',
+            message: 'You have no expenses logged yet. Track your daily spends or log your corporate allowance to unlock AI analysis!',
+            severity: 'low',
+            actionable: true,
+          },
+          {
+            type: 'savings_opportunity',
+            title: '₹30k Income Target',
+            message: `Your monthly limit is ₹${safeMonthly.toLocaleString()}. Save ₹${safeSavings.toLocaleString()} by keeping daily spends under ₹700.`,
+            severity: 'low',
+            actionable: true,
+          },
+          {
+            type: 'recommendation',
+            title: 'Corporate ₹50 Spend',
+            message: 'Your routine ₹50/day company spend sums to ₹1,500/month from your Current Bank Account.',
+            severity: 'low',
+            actionable: true,
+          }
+        ];
       }
 
       // Prepare expense data for analysis
       const expenseAnalysis = this.prepareExpenseAnalysis(expenses, budget);
-
       const prompt = this.createAnalysisPrompt(expenseAnalysis);
 
       const response = await this.groq.chat.completions.create({
@@ -115,27 +142,17 @@ JSON format:
     "title": "Simple, clear title (max 25 chars)",
     "message": "Easy to understand advice in plain English (max 120 chars)",
     "severity": "low|medium|high", 
-    "actionable": true/false,
+    "actionable": true,
     "category": "optional category name"
   }
 ]
 
 Rules for insights:
 - Use simple, everyday language that anyone can understand
-- Avoid complex financial jargon and technical terms
 - Give practical, actionable advice
 - Be encouraging and positive
-- Focus on what the user can actually do
-- Use specific numbers and examples when helpful
-- Make it sound like friendly advice from a knowledgeable friend
-
-Examples of good language:
-- "You're spending too much on..." instead of "expenditure velocity indicates..."
-- "You could save money by..." instead of "cost optimization through..."
-- "Your budget looks good" instead of "capital allocation efficiency..."
-- "Try to spend less on..." instead of "rationalize discretionary spending..."
-
-Keep it simple, helpful, and easy to read!`
+- Mention Current Bank Account and daily corporate spend if relevant
+- Keep it simple, helpful, and easy to read!`
           },
           {
             role: 'user',
@@ -146,21 +163,44 @@ Keep it simple, helpful, and easy to read!`
       });
 
       const insights = this.parseAIResponse(response.choices[0]?.message?.content || '');
-      return insights;
+      if (insights && insights.length > 0) {
+        return insights;
+      }
+      throw new Error('No structured insights returned by AI');
     } catch (error) {
       console.error('Error generating AI insights:', error);
 
-      // Provide more specific error messages
-      if (error instanceof Error) {
-        if (error.message.includes('API key') || error.message.includes('authentication') || error.message.includes('401') || error.message.includes('403')) {
-          throw new Error('AI service authentication failed. Please check your GROQ_API_KEY configuration.');
-        }
-        if (error.message.includes('GROQ_API_KEY is not configured')) {
-          throw error; // Re-throw the specific error
-        }
-      }
+      // Return high quality intelligent fallback insights so UI is never broken
+      const safeMonthly = budget.monthly > 0 ? budget.monthly : 20000;
+      const safeDaily = Math.round(safeMonthly / 30);
+      const totalSpent = (expenses || []).reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+      const remaining = safeMonthly - totalSpent;
 
-      throw new Error(`AI service unavailable: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      return [
+        {
+          type: remaining > 0 ? 'financial_health' : 'budget_alert',
+          title: remaining > 0 ? 'Budget On Track' : 'Budget Warning',
+          message: remaining > 0 
+            ? `You have ₹${remaining.toLocaleString()} remaining out of ₹${safeMonthly.toLocaleString()} this month. Keep it up!` 
+            : `You have exceeded your monthly limit of ₹${safeMonthly.toLocaleString()} by ₹${Math.abs(remaining).toLocaleString()}.`,
+          severity: remaining > 0 ? 'low' : 'high',
+          actionable: true,
+        },
+        {
+          type: 'recommendation',
+          title: 'Daily Spend Limit',
+          message: `Keep your routine daily expenses under ₹${safeDaily} to maintain a balanced budget.`,
+          severity: 'low',
+          actionable: true,
+        },
+        {
+          type: 'savings_opportunity',
+          title: 'Corporate ₹50 Spend',
+          message: 'At ₹50 daily company spend, your corporate allowance is ₹1,500/month from Current Bank Account.',
+          severity: 'low',
+          actionable: true,
+        }
+      ];
     }
   }
 
@@ -170,9 +210,10 @@ Keep it simple, helpful, and easy to read!`
     const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
     // Filter current month expenses
-    const monthlyExpenses = expenses.filter(e =>
-      e.date >= monthStart && e.date <= monthEnd
-    );
+    const monthlyExpenses = expenses.filter(e => {
+      const d = new Date(e.date);
+      return d >= monthStart && d <= monthEnd;
+    });
 
     // Calculate totals by category
     const categoryTotals: Record<string, number> = {};
@@ -180,17 +221,16 @@ Keep it simple, helpful, and easy to read!`
       categoryTotals[expense.category] = (categoryTotals[expense.category] || 0) + expense.amount;
     });
 
+    const safeMonthlyBudget = budget.monthly > 0 ? budget.monthly : 20000;
     const totalSpent = monthlyExpenses.reduce((sum, e) => sum + e.amount, 0);
-    const averageExpense = totalSpent / (monthlyExpenses.length || 1);
-    const budgetUsed = (totalSpent / budget.monthly) * 100;
+    const averageExpense = monthlyExpenses.length > 0 ? totalSpent / monthlyExpenses.length : 0;
+    const budgetUsed = (totalSpent / safeMonthlyBudget) * 100;
 
     // Find highest spending categories
     const topCategories = Object.entries(categoryTotals)
       .sort(([, a], [, b]) => b - a)
       .slice(0, 3);
 
-    // Let AI determine high expenses based on context, not hardcoded rules
-    // Return all expenses sorted by amount for AI to analyze
     const highExpenses = monthlyExpenses
       .sort((a, b) => b.amount - a.amount)
       .slice(0, 10);
@@ -202,79 +242,55 @@ Keep it simple, helpful, and easy to read!`
       averageExpense,
       topCategories,
       highExpenses,
-      budget,
-      daysInMonth: monthEnd.getDate(),
-      currentDay: now.getDate()
+      budget: { ...budget, monthly: safeMonthlyBudget },
+      daysInMonth: monthEnd.getDate() || 30,
+      currentDay: Math.max(1, now.getDate())
     };
   }
 
   private createAnalysisPrompt(analysis: any): string {
     const burnRate = analysis.totalSpent / analysis.currentDay;
     const projectedMonthlySpend = burnRate * analysis.daysInMonth;
-    const savingsRate = ((analysis.budget.monthly - analysis.totalSpent) / analysis.budget.monthly) * 100;
-    const expenditureVelocity = (analysis.budgetUsed / (analysis.currentDay / analysis.daysInMonth)) * 100;
+    const monthlyBudget = analysis.budget.monthly > 0 ? analysis.budget.monthly : 20000;
+    const savingsRate = Math.max(0, ((monthlyBudget - analysis.totalSpent) / monthlyBudget) * 100);
 
-    return `Look at this person's spending and give 4-5 helpful money tips in simple English. Make it easy to understand and actionable.
+    return `Look at this person's spending and give 3-4 helpful money tips in simple English. Make it easy to understand and actionable.
 
 SPENDING SUMMARY:
-- Monthly budget: ₹${analysis.budget.monthly.toLocaleString()}
-- Spent so far: ₹${analysis.totalSpent.toLocaleString()} (${analysis.budgetUsed.toFixed(1)}% of budget)
+- Monthly budget: ₹${monthlyBudget.toLocaleString()}
+- Spent so far: ₹${analysis.totalSpent.toLocaleString()} (${(analysis.budgetUsed || 0).toFixed(1)}% of budget)
 - Day ${analysis.currentDay} of ${analysis.daysInMonth} this month
 - Spending about ₹${burnRate.toFixed(0)} per day
-- If this continues, will spend ₹${projectedMonthlySpend.toFixed(0)} this month
-- Could save ${savingsRate.toFixed(1)}% of budget
-- Made ${analysis.totalExpenses} purchases
+- Projected spend: ₹${projectedMonthlySpend.toFixed(0)} this month
+- Savings potential: ${savingsRate.toFixed(1)}% of budget
+- Total purchases: ${analysis.totalExpenses}
 - Average purchase: ₹${analysis.averageExpense.toFixed(0)}
 
 WHERE THE MONEY GOES:
-${analysis.topCategories.map(([cat, amount]: [string, number]) => {
-      const percentage = ((amount / analysis.totalSpent) * 100).toFixed(1);
+${analysis.topCategories.length > 0 ? analysis.topCategories.map(([cat, amount]: [string, number]) => {
+      const percentage = analysis.totalSpent > 0 ? ((amount / analysis.totalSpent) * 100).toFixed(1) : '0';
       return `- ${cat.charAt(0).toUpperCase() + cat.slice(1)}: ₹${amount.toLocaleString()} (${percentage}% of spending)`;
-    }).join('\n')}
+    }).join('\n') : '- No categorised spending yet'}
 
-BIGGEST EXPENSES:
-${analysis.highExpenses.slice(0, 3).map((exp: any) =>
-      `- ₹${exp.amount} on ${exp.description} (${exp.category})`
-    ).join('\n')}
-
-Give advice like:
-- "You're doing great with your budget!"
-- "Try to spend less on [category] to save more money"
-- "You could save ₹X by doing Y"
-- "Your [category] spending is higher than usual"
-- "Good job staying within your budget!"
-
-Make it sound like helpful advice from a friend who's good with money. Use simple words and be encouraging!`;
+Give advice on staying within the monthly budget, managing corporate spends (₹50/day), and using Current Bank Account wisely!`;
   }
 
   private parseAIResponse(content: string): AIInsight[] {
     try {
-      // Remove markdown code blocks if present
-      let cleanContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').replace(/```/g, '');
+      let cleanContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').replace(/```/g, '').trim();
 
-      // Try to extract JSON array from the response
       const jsonArrayMatch = cleanContent.match(/\[[\s\S]*\]/);
       if (jsonArrayMatch) {
         const parsed = JSON.parse(jsonArrayMatch[0]);
         return this.normalizeInsights(parsed);
       }
 
-      // Try to parse the entire content as JSON
       try {
         const parsed = JSON.parse(cleanContent);
-
-        // If it's already an array of insights
         if (Array.isArray(parsed)) {
           return this.normalizeInsights(parsed);
         }
-
-        // If it's a complex object, try to extract insights from various possible structures
         if (parsed.insights) return this.normalizeInsights(parsed.insights);
-        if (parsed.advice) return this.convertAdviceToInsights(parsed.advice);
-        if (parsed.financialAnalysis) return this.extractInsightsFromAnalysis(parsed);
-        if (parsed.insightSummary) return this.normalizeInsights(parsed.insightSummary);
-
-        // If it's a single insight object, wrap it in an array
         return this.normalizeInsights([parsed]);
       } catch (parseError) {
         console.error('JSON parsing failed:', parseError);
@@ -282,88 +298,20 @@ Make it sound like helpful advice from a friend who's good with money. Use simpl
       }
     } catch (error) {
       console.error('Failed to parse AI response:', error);
-      console.error('Raw content:', content);
       return [];
     }
   }
 
   private normalizeInsights(insights: any[]): AIInsight[] {
+    if (!Array.isArray(insights)) return [];
     return insights.map((insight: any) => ({
       type: this.normalizeType(insight.type || insight.metric || 'recommendation'),
-      title: insight.title || insight.metric || 'Financial Analysis',
-      message: insight.message || insight.interpretation || insight.comment || 'Analysis provided',
-      severity: this.normalizeSeverity(insight.severity || 'medium'),
+      title: insight.title || 'Financial Tip',
+      message: insight.message || insight.interpretation || 'Smart spending guidance.',
+      severity: this.normalizeSeverity(insight.severity || 'low'),
       actionable: insight.actionable !== false,
       category: insight.category
     }));
-  }
-
-  private extractInsightsFromAnalysis(analysis: any): AIInsight[] {
-    const insights: AIInsight[] = [];
-
-    // Extract insights from different sections of complex analysis
-    if (analysis.insightSummary && Array.isArray(analysis.insightSummary)) {
-      return this.normalizeInsights(analysis.insightSummary);
-    }
-
-    // Extract from financial analysis sections
-    const sections = analysis.financialAnalysis || analysis;
-    Object.keys(sections).forEach(key => {
-      const section = sections[key];
-      if (section && section.comment) {
-        insights.push({
-          type: this.normalizeType(key),
-          title: this.formatTitle(key),
-          message: section.comment,
-          severity: 'medium' as const,
-          actionable: true,
-          category: undefined
-        });
-      }
-    });
-
-    return insights.slice(0, 5); // Limit to 5 insights
-  }
-
-  private formatTitle(key: string): string {
-    return key
-      .replace(/([A-Z])/g, ' $1')
-      .replace(/^./, str => str.toUpperCase())
-      .replace(/Analysis$/, '')
-      .trim();
-  }
-
-  private convertAdviceToInsights(advice: string[]): AIInsight[] {
-    return advice.map((message, index) => {
-      let type: AIInsight['type'] = 'recommendation';
-      let severity: AIInsight['severity'] = 'low';
-      let title = 'Money Tip';
-
-      // Determine type and severity based on content
-      if (message.toLowerCase().includes('great') || message.toLowerCase().includes('good work')) {
-        type = 'financial_health';
-        title = 'Great Job!';
-      } else if (message.toLowerCase().includes('spend less') || message.toLowerCase().includes('save')) {
-        type = 'savings_opportunity';
-        title = 'Save Money';
-        severity = 'medium';
-      } else if (message.toLowerCase().includes('budget')) {
-        type = 'budget_alert';
-        title = 'Budget Update';
-      } else if (message.toLowerCase().includes('spending')) {
-        type = 'spending_pattern';
-        title = 'Spending Tip';
-      }
-
-      return {
-        type,
-        title,
-        message: message.length > 120 ? message.substring(0, 117) + '...' : message,
-        severity,
-        actionable: !message.toLowerCase().includes('great') && !message.toLowerCase().includes('good work'),
-        category: undefined
-      };
-    });
   }
 
   private normalizeType(type: string): AIInsight['type'] {

@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import Layout from "@/components/Layout";
-import { ExpenseCategory, categoryEmojis, Expense, getTotalSpent } from "@/lib/expenses";
+import { ExpenseCategory, categoryEmojis, Expense, getTotalSpent, PAYMENT_ACCOUNTS, getAccountBadge } from "@/lib/expenses";
 import { useAuth } from "@/hooks/use-auth";
 import { QuickAddIncomeModal } from "@/components/QuickAddIncomeModal";
 
@@ -33,6 +33,7 @@ function AddExpenseContent() {
   const [category, setCategory] = useState<ExpenseCategory>("other");
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [note, setNote] = useState("");
+  const [source, setSource] = useState<string>("Current Bank Account");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isCategorizingAI, setIsCategorizingAI] = useState(false);
   const [categorizationMethod, setCategorizationMethod] = useState<'ai' | null>(null);
@@ -43,6 +44,15 @@ function AddExpenseContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
   const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(null);
+
+  const handleQuickCorporate50 = () => {
+    setDescription("Daily Corporate Spend (Office / Tea / Snacks)");
+    setAmount("50");
+    setCategory("food");
+    setSource("Current Bank Account");
+    setDate(new Date().toISOString().split("T")[0]);
+    setNote("Office daily corporate spend");
+  };
 
 
   useEffect(() => {
@@ -104,6 +114,7 @@ function AddExpenseContent() {
             amount: Number(e.amount || 0),
             category: (e.category?.toLowerCase() || "other") as ExpenseCategory,
             note: e.note || undefined,
+            source: e.source || "Current Bank Account",
             date: new Date(rawDate || Date.now()),
           };
         });
@@ -289,6 +300,7 @@ function AddExpenseContent() {
           category,
           date,
           note: note || undefined,
+          source,
         }),
       });
 
@@ -306,6 +318,7 @@ function AddExpenseContent() {
       setCategory("other");
       setDate(new Date().toISOString().split("T")[0]);
       setNote("");
+      setSource("Current Bank Account");
       setEditingExpenseId(null);
 
       // Small delay to show success, then navigate
@@ -326,6 +339,7 @@ function AddExpenseContent() {
     setCategory(expense.category);
     setDate(expense.date.toISOString().split("T")[0]);
     setNote(expense.note || "");
+    setSource(expense.source || "Current Bank Account");
     setEditingExpenseId(expense.id);
     setSubmitError(null);
     // Scroll to form
@@ -473,6 +487,10 @@ function AddExpenseContent() {
                                       <p className="text-xs text-muted-foreground">
                                         {expense.date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
                                       </p>
+                                      <span className="text-xs text-muted-foreground">•</span>
+                                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                                        {expense.source || "Current Account"}
+                                      </span>
                                     </div>
                                   </div>
                                   <p className="text-sm font-bold text-primary">₹{expense.amount.toFixed(0)}</p>
@@ -703,6 +721,60 @@ function AddExpenseContent() {
             </div>
           </div>
 
+          {/* Quick Fill Shortcuts Bar */}
+          <div className="flex flex-wrap items-center gap-2 p-3 bg-gradient-to-r from-blue-50 to-indigo-50/50 rounded-2xl border border-blue-100 mb-6">
+            <span className="text-xs font-bold text-blue-900 flex items-center gap-1.5 mr-1">
+              <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+              Quick Presets:
+            </span>
+            <button
+              type="button"
+              onClick={handleQuickCorporate50}
+              className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              🏢 Corporate Daily (₹50)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setDescription("Office Lunch");
+                setAmount("100");
+                setCategory("food");
+                setSource("Current Bank Account");
+                setDate(new Date().toISOString().split("T")[0]);
+              }}
+              className="px-3 py-1.5 rounded-xl bg-white hover:bg-blue-50 text-slate-700 border border-slate-200 text-xs font-semibold shadow-sm transition-all cursor-pointer"
+            >
+              🍔 Lunch (₹100)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setDescription("Commute / Metro / Auto");
+                setAmount("50");
+                setCategory("transport");
+                setSource("Current Bank Account");
+                setDate(new Date().toISOString().split("T")[0]);
+              }}
+              className="px-3 py-1.5 rounded-xl bg-white hover:bg-blue-50 text-slate-700 border border-slate-200 text-xs font-semibold shadow-sm transition-all cursor-pointer"
+            >
+              🚗 Travel (₹50)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setDescription("Tea / Coffee / Snacks");
+                setAmount("30");
+                setCategory("food");
+                setSource("Current Bank Account");
+                setDate(new Date().toISOString().split("T")[0]);
+              }}
+              className="px-3 py-1.5 rounded-xl bg-white hover:bg-blue-50 text-slate-700 border border-slate-200 text-xs font-semibold shadow-sm transition-all cursor-pointer"
+            >
+              ☕ Tea/Coffee (₹30)
+            </button>
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="bg-card rounded-xl border border-border shadow-sm p-6">
               <Label
@@ -832,6 +904,44 @@ function AddExpenseContent() {
               </div>
             </div>
 
+            {/* Payment Account / Source Selection */}
+            <div className="bg-card rounded-xl border border-border shadow-sm p-6">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <Label className="text-base font-semibold text-foreground">
+                    Payment Account / Source
+                  </Label>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    Select the bank account or payment method used
+                  </p>
+                </div>
+                <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                  {source}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {PAYMENT_ACCOUNTS.map((acc) => (
+                  <button
+                    key={acc.id}
+                    type="button"
+                    onClick={() => setSource(acc.id)}
+                    className={cn(
+                      "flex items-start gap-3 p-3.5 rounded-xl border text-left transition-all cursor-pointer",
+                      source === acc.id
+                        ? "bg-blue-50/90 border-blue-600 text-blue-900 shadow-sm ring-2 ring-blue-500/20"
+                        : "bg-background hover:bg-muted/40 border-border text-foreground"
+                    )}
+                  >
+                    <span className="text-2xl mt-0.5">{acc.icon}</span>
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold truncate">{acc.label}</p>
+                      <p className="text-[11px] text-muted-foreground truncate">{acc.description}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="bg-card rounded-xl border border-border shadow-sm p-6">
               <Label
                 htmlFor="note"
@@ -869,6 +979,12 @@ function AddExpenseContent() {
                     <p className="text-2xl font-bold text-primary">
                       ₹{parseFloat(amount).toFixed(2)}
                     </p>
+                  </div>
+                  <div className="flex items-center gap-2 pt-2 border-t border-primary/10">
+                    <span className="text-xs text-muted-foreground">Payment Account:</span>
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded bg-blue-100 text-blue-800">
+                      {source}
+                    </span>
                   </div>
                 </div>
               </div>

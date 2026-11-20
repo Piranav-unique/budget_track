@@ -12,6 +12,14 @@ import CircularProgress from "@/components/CircularProgress";
 import Slider from "@/components/Slider";
 import { useAuth } from "@/hooks/use-auth";
 
+const PIRANAV_INCOME_UPDATE_KEY = "piranav_monthly_income_update_v1";
+
+function isPiranavUser(user: { username?: string; display_name?: string; email?: string } | null) {
+  return [user?.username, user?.display_name, user?.email]
+    .filter(Boolean)
+    .some((value) => value!.toLowerCase().includes("piranav"));
+}
+
 function BudgetSettingsContent() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -30,19 +38,28 @@ function BudgetSettingsContent() {
     if (user) {
       const budgetKey = `budget_${user.id}`;
       const saved = localStorage.getItem(budgetKey);
+      const shouldUpdatePiranavIncome =
+        isPiranavUser(user) && localStorage.getItem(PIRANAV_INCOME_UPDATE_KEY) !== "true";
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
-          setBudget({
+          const nextBudget = {
             ...parsed,
-            income: parsed.income || 30000,
-            monthly: parsed.monthly || 20000,
-            weekly: parsed.weekly || Math.round((parsed.monthly || 20000) / 4),
-            savingsGoal: parsed.savingsGoal !== undefined ? parsed.savingsGoal : 10000
-          });
+            income: shouldUpdatePiranavIncome ? 0 : (parsed.income ?? 30000),
+            monthly: parsed.monthly ?? 20000,
+            weekly: parsed.weekly ?? Math.round((parsed.monthly ?? 20000) / 4),
+            savingsGoal: parsed.savingsGoal ?? 10000,
+          };
+          setBudget(nextBudget);
+          if (shouldUpdatePiranavIncome) {
+            localStorage.setItem(budgetKey, JSON.stringify(nextBudget));
+            localStorage.setItem(PIRANAV_INCOME_UPDATE_KEY, "true");
+          }
         } catch (e) {
           console.error("Error loading budget:", e);
         }
+      } else if (isPiranavUser(user)) {
+        setBudget((current) => ({ ...current, income: 0 }));
       }
     }
   }, [user]);
@@ -272,7 +289,7 @@ function BudgetSettingsContent() {
                     Your Monthly Income (₹)
                   </Label>
                   <Slider
-                    value={budget.income || 0}
+                    value={budget.income ?? 0}
                     onChange={(value) => handleChange("income", value.toString())}
                     min={0}
                     max={Math.max(100000, (budget.income || 0) * 1.5)}
@@ -369,18 +386,23 @@ function BudgetSettingsContent() {
                   </div>
                 </div>
 
-                <div className="bg-[#f8fafc] rounded-2xl p-6 grid grid-cols-1 sm:grid-cols-3 gap-8">
+                <div className="bg-[#f8fafc] rounded-2xl p-6 grid grid-cols-1 sm:grid-cols-4 gap-6">
                   <div className="space-y-2">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Weekly</p>
-                    <p className="text-3xl font-bold text-blue-600">₹{(budget.weekly).toFixed(0)}</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Weekly Allowance</p>
+                    <p className="text-2xl font-bold text-blue-600">₹{(budget.weekly).toFixed(0)}</p>
                   </div>
                   <div className="space-y-2">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Daily</p>
-                    <p className="text-3xl font-bold text-blue-600">₹{(budget.monthly / 30).toFixed(0)}</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Daily Total</p>
+                    <p className="text-2xl font-bold text-blue-600">₹{(budget.monthly / 30).toFixed(0)}</p>
                   </div>
                   <div className="space-y-2">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Hourly</p>
-                    <p className="text-3xl font-bold text-blue-600">₹{(budget.monthly / (30 * 24)).toFixed(0)}</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Corporate Routine</p>
+                    <p className="text-2xl font-bold text-indigo-600">₹50<span className="text-xs text-slate-400 font-normal">/day</span></p>
+                    <p className="text-[10px] text-slate-500 font-medium">₹1,500/mo (Current A/C)</p>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Discretionary Daily</p>
+                    <p className="text-2xl font-bold text-emerald-600">₹{Math.max(0, Math.round(budget.monthly / 30) - 50)}<span className="text-xs text-slate-400 font-normal">/day</span></p>
                   </div>
                 </div>
               </div>

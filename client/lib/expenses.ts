@@ -130,3 +130,40 @@ export function getUnnecessaryExpenses(
   // Return empty array - let AI determine unnecessary expenses instead
   return [];
 }
+
+export const PAYMENT_ACCOUNTS = [
+  { id: "Current Bank Account", label: "Current Bank Account", icon: "🏢", description: "Corporate / Business Primary Account" },
+  { id: "Savings Bank Account", label: "Savings Bank Account", icon: "🏦", description: "Personal Savings & Emergency" },
+  { id: "UPI", label: "UPI (GPay / PhonePe / Paytm)", icon: "📱", description: "Instant Mobile QR / Contact" },
+  { id: "Cash", label: "Cash in Hand", icon: "💵", description: "Physical Cash & Coins" },
+  { id: "Credit Card", label: "Credit Card", icon: "💳", description: "Monthly Card Limit" },
+] as const;
+
+export type PaymentAccount = typeof PAYMENT_ACCOUNTS[number]["id"];
+
+export function getAccountBadge(source?: string | null): { label: string; icon: string; color: string } {
+  if (!source) {
+    return { label: "Current Bank Account", icon: "🏢", color: "bg-blue-50 text-blue-700 border-blue-200" };
+  }
+  const s = source.toLowerCase();
+  if (s.includes("current")) {
+    return { label: "Current Bank Account", icon: "🏢", color: "bg-blue-50 text-blue-700 border-blue-200" };
+  }
+  if (s.includes("saving")) {
+    return { label: "Savings Account", icon: "🏦", color: "bg-emerald-50 text-emerald-700 border-emerald-200" };
+  }
+  if (s.includes("upi") || s.includes("gpay") || s.includes("phonepe") || s.includes("paytm")) {
+    return { label: "UPI", icon: "📱", color: "bg-purple-50 text-purple-700 border-purple-200" };
+  }
+  if (s.includes("cash")) {
+    return { label: "Cash", icon: "💵", color: "bg-amber-50 text-amber-700 border-amber-200" };
+  }
+  if (s.includes("credit") || s.includes("card")) {
+    return { label: "Credit Card", icon: "💳", color: "bg-rose-50 text-rose-700 border-rose-200" };
+  }
+  if (s.includes("telegram")) {
+    return { label: "Telegram Bot", icon: "✈️", color: "bg-sky-50 text-sky-700 border-sky-200" };
+  }
+  return { label: source, icon: "💳", color: "bg-slate-50 text-slate-700 border-slate-200" };
+}
+

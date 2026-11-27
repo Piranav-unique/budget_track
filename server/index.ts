@@ -21,6 +21,9 @@ import {
 import { handleCreateIncome, handleListIncome, handleUpdateIncome, handleDeleteIncome } from "./routes/income";
 import { handleGetAIInsights, handleGetQuickInsight, handleSuggestBudget } from "./routes/ai-insights";
 import { handleRequestOTP, handleVerifyOTP, handleTokenStatus, handleVerifyToken, handleTestEmail, handleCheckEmail } from "./routes/mcp-auth";
+import { handleBankSMSWebhook } from "./routes/bank-sms";
+import { handleListReimbursements, handleUpdateReimbursement, handleExportReimbursements } from "./routes/reimbursements";
+import { handleExportCSV, handleExportFinancialSummary } from "./routes/export";
 import { setupAuth } from "./auth";
 import { initDb } from "./db";
 
@@ -45,6 +48,16 @@ export function createServer() {
   app.post("/api/webhook/n8n", handleTelegramExpense);
   app.post("/api/expenses/telegram", handleTelegramExpense);
   app.post("/api/webhook/income", handleCreateIncome);
+  app.post("/api/webhook/bank-sms", handleBankSMSWebhook);
+
+  // Corporate Reimbursements endpoints (Aptean / Company Employee Claims)
+  app.get("/api/reimbursements", handleListReimbursements);
+  app.patch("/api/reimbursements/:id", handleUpdateReimbursement);
+  app.get("/api/reimbursements/export", handleExportReimbursements);
+
+  // Financial Export & Summary endpoints
+  app.get("/api/export/csv", handleExportCSV);
+  app.get("/api/export/summary", handleExportFinancialSummary);
 
   // AI Expense Categorization endpoint
   app.post("/api/categorize-expense", handleCategorizeExpense);

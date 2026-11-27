@@ -158,6 +158,17 @@ export async function initDb() {
       CREATE INDEX IF NOT EXISTS idx_mcp_tokens_user ON mcp_tokens(user_id);
     `);
 
+    // Add corporate reimbursement support to expenses
+    await pool.query(`
+      ALTER TABLE expenses ADD COLUMN IF NOT EXISTS is_reimbursable BOOLEAN DEFAULT FALSE;
+      ALTER TABLE expenses ADD COLUMN IF NOT EXISTS reimbursement_status VARCHAR(20) DEFAULT 'none';
+      ALTER TABLE expenses ADD COLUMN IF NOT EXISTS claim_ref VARCHAR(100);
+      ALTER TABLE expenses ADD COLUMN IF NOT EXISTS receipt_url TEXT;
+      ALTER TABLE expenses ADD COLUMN IF NOT EXISTS corporate_project TEXT;
+    `).catch((err) => {
+      console.warn("Reimbursement columns already present or table alteration skipped:", err?.message);
+    });
+
     console.log("Database connected & tables initialized");
   } catch (error) {
     console.error("Error initializing database:", error);

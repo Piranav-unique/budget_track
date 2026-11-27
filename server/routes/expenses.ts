@@ -2,6 +2,7 @@ import { RequestHandler } from "express";
 import { pool } from "../db";
 import { User } from "../../shared/api";
 import { categorizeWithAI, isGroqAvailable } from "../services/groq";
+import { handleBankSMSWebhook } from "./bank-sms";
 
 /**
  * Find or auto-create the user 'piranav' to associate Telegram / n8n expenses with.
@@ -234,6 +235,12 @@ export const handleTelegramExpense: RequestHandler = async (req, res) => {
       if (providedSecret !== webhookSecret) {
         return res.status(401).json({ error: "Invalid webhook secret" });
       }
+    }
+
+    // Auto-detect if this is a raw Bank SMS forwarded from Telegram / n8n
+    const rawSmsCandidate = req.body?.raw_sms || req.body?.message || req.body?.text || (typeof description === "string" && !amount && description.length > 20 ? description : null);
+    if (rawSmsCandidate && (!amount || isNaN(Number(amount)))) {
+      return handleBankSMSWebhook(req, res, () => {});
     }
 
     if (!description || typeof description !== "string") {

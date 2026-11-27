@@ -16,7 +16,6 @@ import {
   Download,
   DollarSign,
   Activity,
-
   Eye,
   Filter,
   Search,
@@ -26,6 +25,11 @@ import {
   CheckCircle2,
   Landmark,
   ArrowRightLeft,
+  CreditCard,
+  ShieldCheck,
+  Layers,
+  FileText,
+  PieChart,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -36,7 +40,6 @@ import {
   categoryEmojis,
   categoryColors,
   getTotalSpent,
-  PAYMENT_ACCOUNTS,
   getAccountBadge,
 } from "@/lib/expenses";
 import { cn } from "@/lib/utils";
@@ -47,7 +50,7 @@ import { useAIInsights } from "@/hooks/use-ai-insights";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 
-// Helper to remove extra quotes if they exist from CSV import or similar
+// Helper to sanitize strings from CSV or DB
 const cleanValue = (val: string | undefined | null) => {
   if (!val) return "";
   return val.replace(/^"+|"+$/g, "").trim();
@@ -67,6 +70,9 @@ export default function Dashboard() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [bankAccounts, setBankAccounts] = useState<any[]>([]);
   const [isLoggingCorporate, setIsLoggingCorporate] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>("all");
+  const [isExporting, setIsExporting] = useState(false);
   const [budget, setBudget] = useState<Budget>({
     monthly: 0,
     weekly: 0,
@@ -86,14 +92,13 @@ export default function Dashboard() {
     }
   };
 
-
   // AI Insights hook
   const {
     insights,
     loading: insightsLoading,
     error: insightsError,
     lastUpdated,
-    refreshInsights
+    refreshInsights,
   } = useAIInsights(budget, expenses);
 
   const fetchExpenses = async () => {
@@ -120,7 +125,6 @@ export default function Dashboard() {
           date: new Date(rawDate || Date.now()),
         };
       });
-      // Sort by date desc
       parsed.sort((a, b) => b.date.getTime() - a.date.getTime());
       setExpenses(parsed);
     } catch (e) {
@@ -166,6 +170,25 @@ export default function Dashboard() {
     }
   };
 
+  const handleExportCSV = async () => {
+    setIsExporting(true);
+    try {
+      window.location.href = "/api/export/csv";
+      toast({
+        title: "📥 Export Started",
+        description: "Your full financial ledger is downloading as a CSV spreadsheet.",
+      });
+    } catch (err) {
+      toast({
+        title: "Export Failed",
+        description: "Could not export ledger CSV.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const loadBudget = () => {
     if (user) {
       const budgetKey = `budget_${user.id}`;
@@ -200,43 +223,36 @@ export default function Dashboard() {
     const interval = setInterval(() => {
       fetchExpenses();
       fetchAccounts();
-    }, 10000); // Poll every 10s
+    }, 10000);
 
     loadBudget();
 
-    // Listen for storage changes (when budget is updated in BudgetSettings)
     const handleStorageChange = () => {
       loadBudget();
     };
-    window.addEventListener('storage', handleStorageChange);
-    // Also listen for custom storage event
-    window.addEventListener('budgetUpdated', handleStorageChange);
+    window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("budgetUpdated", handleStorageChange);
 
     return () => {
       clearInterval(interval);
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('budgetUpdated', handleStorageChange);
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("budgetUpdated", handleStorageChange);
     };
   }, [user]);
 
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const daysRemainingInMonth = Math.max(1, daysInMonth - now.getDate());
 
   const monthlySpent = getTotalSpent(expenses, monthStart, monthEnd);
   const monthlyRemaining = budget.monthly - monthlySpent;
   const monthlyProgress = budget.monthly > 0 ? (monthlySpent / budget.monthly) * 100 : 0;
+  const dailySafeSpend = Math.max(0, Math.round(monthlyRemaining / daysRemainingInMonth));
 
-  // Weekly calculations
-  const weekStart = new Date(now);
-  weekStart.setDate(now.getDate() - now.getDay()); // Sunday
-  const weekEnd = new Date(now);
-  weekEnd.setDate(weekStart.getDate() + 6);
-  weekEnd.setHours(23, 59, 59, 999);
-
-  const weeklySpent = getTotalSpent(expenses, weekStart, weekEnd);
-  const weeklyRemaining = budget.weekly - weeklySpent;
-  const weeklyProgress = budget.weekly > 0 ? (weeklySpent / budget.weekly) * 100 : 0;
+  // Liquid Net Worth (Sum of all bank accounts)
+  const totalLiquidNetWorth = bankAccounts.reduce((sum, acc) => sum + Number(acc.balance || 0), 0);
 
   // Top categories
   const categoryTotals: Record<string, number> = {};
@@ -248,7 +264,7 @@ export default function Dashboard() {
 
   const sortedCategories = Object.entries(categoryTotals)
     .sort(([, a], [, b]) => b - a)
-    .slice(0, 3)
+    .slice(0, 4)
     .map(([cat, amount]) => ({
       category: cat as ExpenseCategory,
       amount,
@@ -261,270 +277,621 @@ export default function Dashboard() {
     d1.getDate() === d2.getDate();
 
   const todayCorporateExpenses = expenses.filter(
-    (e) => isSameDay(e.date, now) && (
-      (e.description && e.description.toLowerCase().includes("corporate")) ||
-      (e.amount === 50 && (e.category === "food" || (e.source && e.source.toLowerCase().includes("current"))))
-    )
+    (e) =>
+      isSameDay(e.date, now) &&
+      ((e.description && e.description.toLowerCase().includes("corporate")) ||
+        (e.amount === 50 && (e.category === "food" || (e.source && e.source.toLowerCase().includes("current")))))
   );
 
   const isCorporateLoggedToday = todayCorporateExpenses.length > 0;
   const corporateLoggedTodayAmount = todayCorporateExpenses.reduce((sum, e) => sum + e.amount, 0);
 
   const monthlyCorporateExpenses = expenses.filter(
-    (e) => e.date >= monthStart && e.date <= monthEnd && (
-      (e.description && e.description.toLowerCase().includes("corporate")) ||
-      (e.amount === 50 && e.category === "food")
-    )
+    (e) =>
+      e.date >= monthStart &&
+      e.date <= monthEnd &&
+      ((e.description && e.description.toLowerCase().includes("corporate")) ||
+        (e.amount === 50 && e.category === "food"))
   );
   const monthlyCorporateTotal = monthlyCorporateExpenses.reduce((sum, e) => sum + e.amount, 0);
   const daysLoggedThisMonth = monthlyCorporateExpenses.length;
 
+  // Filtered expenses for search & category
+  const filteredExpenses = expenses.filter((e) => {
+    const matchesSearch =
+      !searchQuery ||
+      e.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      e.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (e.source && e.source.toLowerCase().includes(searchQuery.toLowerCase()));
+
+    const matchesCategory =
+      selectedCategoryFilter === "all" || e.category.toLowerCase() === selectedCategoryFilter.toLowerCase();
+
+    return matchesSearch && matchesCategory;
+  });
+
   return (
     <Layout>
-      <div className="min-h-screen bg-background p-3 md:p-6 lg:p-8">
-        <div className="max-w-7xl mx-auto space-y-4 md:space-y-6 lg:space-y-8">
-          {/* Professional Header Section */}
-          <div className="bg-card rounded-3xl shadow-sm border border-border p-4 md:p-6 lg:p-8">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 md:gap-6">
+      <div className="min-h-screen bg-slate-950 text-slate-100 p-3 sm:p-5 md:p-8 space-y-6">
+        <div className="max-w-7xl mx-auto space-y-6">
+
+          {/* 🌟 1. PREMIER EXECUTIVE HERO COMMAND BAR */}
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950/80 to-slate-900 border border-indigo-500/20 p-5 md:p-7 shadow-2xl backdrop-blur-xl">
+            {/* Ambient background glows */}
+            <div className="absolute -top-24 -left-24 w-72 h-72 bg-blue-500/15 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-24 -right-24 w-72 h-72 bg-purple-500/15 rounded-full blur-3xl pointer-events-none" />
+
+            <div className="relative z-10 flex flex-col xl:flex-row xl:items-center justify-between gap-6">
+              {/* Left Identity Section */}
               <div className="space-y-3">
                 <div className="flex items-center gap-3 md:gap-4">
-                  <div className="w-12 h-12 md:w-16 md:h-16 rounded-3xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 flex items-center justify-center shadow-xl shadow-blue-500/25">
-                    <BarChart3 className="w-6 h-6 md:w-8 md:h-8 text-white" />
+                  <div className="relative">
+                    <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-violet-500 flex items-center justify-center font-black text-xl text-white shadow-lg shadow-indigo-500/30 ring-2 ring-indigo-400/30">
+                      PM
+                    </div>
+                    <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-slate-900 shadow-sm" />
                   </div>
                   <div>
-                    <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-foreground tracking-tight">
-                      Financial Dashboard
-                    </h1>
-                    <p className="text-muted-foreground text-sm md:text-base lg:text-lg font-medium">
-                      Complete overview of your financial health
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+                        Executive Financial Suite
+                      </h1>
+                      <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 uppercase tracking-widest">
+                        Aptean Edition
+                      </span>
+                    </div>
+                    <p className="text-slate-400 text-xs sm:text-sm font-medium flex items-center gap-2 mt-0.5">
+                      <span>Welcome back, <strong className="text-slate-200">Piranav</strong></span>
+                      <span>•</span>
+                      <span className="text-emerald-400 flex items-center gap-1 font-semibold">
+                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                        Live Multi-Bank Ledger
+                      </span>
                     </p>
                   </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs md:text-sm">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Calendar className="w-3 h-3 md:w-4 md:h-4" />
-                    <span className="hidden sm:inline">Last updated: {new Date().toLocaleDateString()}</span>
-                    <span className="sm:hidden">{new Date().toLocaleDateString()}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-emerald-600 bg-emerald-50 px-2 py-0.5 md:px-3 md:py-1 rounded-full">
-                    <Activity className="w-3 h-3 md:w-4 md:h-4" />
-                    <span className="font-medium">Live Data</span>
-                  </div>
-                </div>
               </div>
-              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                <div className="hidden lg:flex items-center gap-2 bg-muted/20 rounded-xl px-4 py-2">
-                  <Search className="w-4 h-4 text-muted-foreground" />
+
+              {/* Right Action Command Center */}
+              <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+                {/* Search Bar */}
+                <div className="relative flex-1 sm:flex-none">
+                  <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                   <input
                     type="text"
-                    placeholder="Search expenses..."
-                    className="bg-transparent border-0 outline-0 text-sm text-foreground placeholder:text-muted-foreground w-32"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search expenses, banks..."
+                    className="w-full sm:w-48 md:w-56 pl-10 pr-4 py-2 rounded-xl bg-slate-900/90 border border-slate-700/80 text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
                   />
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={fetchExpenses}
-                  className="gap-2 bg-card hover:bg-muted/20 border-border text-foreground shadow-sm hover:shadow-md transition-all flex-1 sm:flex-none"
-                >
-                  <RefreshCcw className="w-4 h-4" />
-                  <span className="hidden sm:inline">Refresh</span>
-                </Button>
-                <Link to="/analytics" className="flex-1 sm:flex-none">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full gap-2 bg-card hover:bg-muted/20 border-border text-foreground shadow-sm hover:shadow-md transition-all"
-                  >
-                    <BarChart3 className="w-4 h-4" />
-                    <span className="hidden sm:inline">Analytics</span>
-                  </Button>
-                </Link>
+
+                {/* Spot Income Modal */}
                 <QuickAddIncomeModal
+                  trigger={
+                    <Button className="gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-lg shadow-emerald-500/20 rounded-xl px-4 py-2 font-bold text-xs transition-all hover:scale-[1.02] cursor-pointer">
+                      <Zap className="w-4 h-4 text-emerald-200" />
+                      <span>+ Quick Income</span>
+                    </Button>
+                  }
                   onSuccess={() => {
                     loadBudget();
                     fetchExpenses();
+                    fetchAccounts();
                   }}
                 />
-                <Link to="/add-expense" className="flex-1 sm:flex-none">
-                  <Button className="w-full gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/25 transition-all hover:scale-[1.02] hover:shadow-xl">
+
+                {/* Add Expense Button */}
+                <Link to="/add-expense">
+                  <Button className="gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-lg shadow-indigo-500/25 rounded-xl px-4 py-2 font-bold text-xs transition-all hover:scale-[1.02] cursor-pointer">
                     <Plus className="w-4 h-4" />
-                    <span className="hidden sm:inline">Add Expense</span>
-                    <span className="sm:hidden">Add</span>
+                    <span>Add Expense</span>
                   </Button>
                 </Link>
+
+                {/* CSV Export Button */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExportCSV}
+                  disabled={isExporting}
+                  className="gap-2 bg-slate-900/80 border-slate-700 hover:bg-slate-800 text-slate-300 rounded-xl px-3 py-2 text-xs font-semibold"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Export</span>
+                </Button>
+
+                {/* Refresh Button */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    fetchExpenses();
+                    fetchAccounts();
+                    refreshInsights();
+                    toast({ title: "Refreshed", description: "Latest ledger and AI insights re-synced." });
+                  }}
+                  className="bg-slate-900/80 border-slate-700 hover:bg-slate-800 text-slate-300 rounded-xl p-2 sm:px-3 text-xs"
+                >
+                  <RefreshCcw className="w-3.5 h-3.5" />
+                </Button>
               </div>
             </div>
           </div>
 
-          {/* Professional KPI Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-            {/* Monthly Budget Card */}
-            <Card className="border-0 shadow-lg shadow-slate-200/60 bg-card overflow-hidden relative group hover:-translate-y-1 transition-all duration-300 hover:shadow-xl">
+          {/* 💎 2. PREMIER EXECUTIVE METRIC CARDS (4-COLUMN GRID) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
+
+            {/* CARD 1: LIQUID NET WORTH & MULTI-BANK TOTAL */}
+            <Card className="border border-slate-800 bg-gradient-to-b from-slate-900 to-slate-950 rounded-2xl shadow-xl overflow-hidden relative group hover:border-blue-500/40 transition-all duration-300">
               <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                <Wallet className="w-32 h-32 text-blue-500" />
+                <Landmark className="w-24 h-24 text-blue-400" />
               </div>
-              <CardContent className="p-6 relative z-10">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/25">
-                    <Wallet className="w-6 h-6" />
-                  </div>
-                  <span
-                    className={cn(
-                      "text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest",
-                      monthlyRemaining < 0
-                        ? "bg-red-100 text-red-700 border border-red-200"
-                        : "bg-emerald-100/50 text-emerald-600 border border-emerald-100",
-                    )}
-                  >
-                    Monthly
-                  </span>
-                </div>
-                <div className="space-y-1 mb-6">
-                  <p className="text-xs text-slate-400 font-bold uppercase tracking-[0.15em]">
-                    Total Spent
-                  </p>
-                  <h3 className="text-3xl font-bold text-foreground">
-                    ₹{monthlySpent.toLocaleString()}
-                  </h3>
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className="text-slate-400">
-                      of ₹{budget.monthly.toLocaleString()}
+              <CardContent className="p-5 relative z-10 flex flex-col justify-between h-full space-y-4">
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <Landmark className="w-3.5 h-3.5 text-blue-400" /> Total Liquid Net Worth
                     </span>
-                    <div className={cn(
-                      "flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full",
-                      monthlyProgress > 100 ? "bg-red-50 text-red-600" :
-                        monthlyProgress > 80 ? "bg-amber-50 text-amber-600" :
-                          "bg-emerald-50 text-emerald-600"
-                    )}>
-                      {monthlyProgress > 100 ? (
-                        <TrendingUp className="w-3 h-3" />
-                      ) : (
-                        <TrendingDown className="w-3 h-3" />
-                      )}
-                      {monthlyProgress.toFixed(0)}%
-                    </div>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-300 border border-blue-400/20">
+                      4 Accounts
+                    </span>
                   </div>
+                  <h3 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
+                    ₹{totalLiquidNetWorth.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-1 flex items-center gap-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Real-time Multi-Bank Balance</span>
+                  </p>
                 </div>
-                <div className="space-y-3">
-                  <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden">
+
+                <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-1 text-slate-400">
+                    <span>Current:</span>
+                    <strong className="text-slate-200">
+                      ₹{Number(bankAccounts.find((a) => a.type === "current")?.balance || 25000).toLocaleString()}
+                    </strong>
+                  </div>
+                  <Link to="/accounts" className="text-blue-400 hover:text-blue-300 font-semibold flex items-center gap-1">
+                    Transfer <ArrowRightLeft className="w-3 h-3" />
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* CARD 2: MONTHLY BUDGET & VELOCITY RUNWAY */}
+            <Card className="border border-slate-800 bg-gradient-to-b from-slate-900 to-slate-950 rounded-2xl shadow-xl overflow-hidden relative group hover:border-emerald-500/40 transition-all duration-300">
+              <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                <Wallet className="w-24 h-24 text-emerald-400" />
+              </div>
+              <CardContent className="p-5 relative z-10 flex flex-col justify-between h-full space-y-4">
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <Wallet className="w-3.5 h-3.5 text-emerald-400" /> Available Budget
+                    </span>
+                    <span
+                      className={cn(
+                        "text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase",
+                        monthlyRemaining < 0
+                          ? "bg-red-500/10 text-red-400 border-red-500/20"
+                          : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                      )}
+                    >
+                      {monthlyRemaining < 0 ? "Over Budget" : `${monthlyProgress.toFixed(0)}% Used`}
+                    </span>
+                  </div>
+                  <h3 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
+                    ₹{monthlyRemaining.toLocaleString()}
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-1">
+                    of ₹{budget.monthly.toLocaleString()} monthly limit
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
                     <div
                       className={cn(
-                        "h-full rounded-full transition-all duration-700 ease-out",
-                        monthlyRemaining < 0
-                          ? "bg-gradient-to-r from-red-500 to-red-600"
-                          : "bg-gradient-to-r from-blue-500 to-blue-600",
+                        "h-full rounded-full transition-all duration-700",
+                        monthlyProgress > 100
+                          ? "bg-gradient-to-r from-red-500 to-rose-600"
+                          : monthlyProgress > 80
+                          ? "bg-gradient-to-r from-amber-500 to-orange-500"
+                          : "bg-gradient-to-r from-emerald-500 to-teal-400"
                       )}
                       style={{ width: `${Math.min(monthlyProgress, 100)}%` }}
                     />
                   </div>
-                  <div className="flex justify-between text-xs font-medium">
-                    <span className="text-slate-500">
-                      {monthlyProgress.toFixed(0)}% used
-                    </span>
-                    <span
-                      className={cn(
-                        "font-semibold",
-                        monthlyRemaining < 0
-                          ? "text-red-600"
-                          : "text-emerald-600"
-                      )}
-                    >
-                      {monthlyRemaining < 0
-                        ? `Over by ₹${Math.abs(monthlyRemaining).toLocaleString()}`
-                        : `₹${monthlyRemaining.toLocaleString()} left`}
-                    </span>
+                  <div className="flex items-center justify-between text-[11px] text-slate-400">
+                    <span>Runway: <strong className="text-emerald-300">₹{dailySafeSpend}/day</strong></span>
+                    <span>{daysRemainingInMonth} days left</span>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Total Balance Card */}
-            <Card className="border-0 shadow-lg shadow-emerald-200/60 bg-card overflow-hidden relative group hover:-translate-y-1 transition-all duration-300 hover:shadow-xl">
+            {/* CARD 3: CORPORATE SPEND & APTEAN ALLOWANCE */}
+            <Card className="border border-slate-800 bg-gradient-to-b from-slate-900 to-slate-950 rounded-2xl shadow-xl overflow-hidden relative group hover:border-indigo-500/40 transition-all duration-300">
               <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                <DollarSign className="w-32 h-32 text-emerald-500" />
+                <Building2 className="w-24 h-24 text-indigo-400" />
               </div>
-              <CardContent className="p-6 relative z-10">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center text-white shadow-lg shadow-emerald-500/25">
-                    <DollarSign className="w-6 h-6" />
-                  </div>
-                  <span className="text-[10px] font-bold px-3 py-1 rounded-full bg-emerald-100/50 text-emerald-600 border border-emerald-100 uppercase tracking-widest">
-                    Balance
-                  </span>
-                </div>
-                <div className="space-y-1 mb-6">
-                  <p className="text-xs text-slate-400 font-bold uppercase tracking-[0.15em]">
-                    Available Budget
-                  </p>
-                  <h3 className="text-3xl font-bold text-foreground">
-                    ₹{monthlyRemaining.toLocaleString()}
-                  </h3>
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className="text-slate-400">
-                      Monthly remaining
+              <CardContent className="p-5 relative z-10 flex flex-col justify-between h-full space-y-4">
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <Briefcase className="w-3.5 h-3.5 text-indigo-400" /> Corporate Allowance
                     </span>
-                    <div className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full bg-emerald-50 text-emerald-600">
-                      <TrendingUp className="w-3 h-3" />
-                      Available
-                    </div>
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <div className="bg-slate-50 rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-1">
-                      <p className="text-slate-500 font-medium text-sm">Monthly Budget</p>
-                      <span className="text-xs font-semibold text-emerald-600">Income: ₹{(budget.income || 0).toLocaleString()}</span>
-                    </div>
-                    <p className="font-bold text-foreground text-lg">₹{budget.monthly.toLocaleString()}</p>
-                    <p className="text-xs text-slate-400 mt-1">Spent: ₹{monthlySpent.toLocaleString()}</p>
-
-                    <QuickAddIncomeModal
-                      trigger={
-                        <button
-                          type="button"
-                          className="w-full mt-3 py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
-                        >
-                          <Zap className="w-3.5 h-3.5" /> + Add Spot Income / Bonus
-                        </button>
-                      }
-                      onSuccess={() => {
-                        loadBudget();
-                        fetchExpenses();
-                      }}
-                    />
-                    {budget.monthly === 0 && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const budgetKey = user ? `budget_${user.id}` : 'budget';
-                          const b30k = { monthly: 20000, weekly: 5000, savingsGoal: 10000, income: 30000 };
-                          localStorage.setItem(budgetKey, JSON.stringify(b30k));
-                          window.dispatchEvent(new Event('budgetUpdated'));
-                        }}
-                        className="w-full mt-3 py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
-                      >
-                        <Sparkles className="w-3.5 h-3.5" /> Quick Set ₹30,000 (30k) Budget
-                      </button>
+                    {isCorporateLoggedToday ? (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-400/30 flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-400" /> Logged
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-400/30 flex items-center gap-1">
+                        <Clock className="w-3 h-3 text-amber-400" /> Due Today
+                      </span>
                     )}
                   </div>
+                  <h3 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
+                    ₹50 <span className="text-xs font-normal text-slate-400">/ day</span>
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Monthly logged: <strong className="text-indigo-300">₹{monthlyCorporateTotal}</strong> ({daysLoggedThisMonth} days)
+                  </p>
+                </div>
+
+                <div className="pt-2">
+                  <Button
+                    onClick={handleQuickLogCorporate50}
+                    disabled={isLoggingCorporate}
+                    size="sm"
+                    className={cn(
+                      "w-full rounded-xl font-bold text-xs py-2 shadow-sm transition-all cursor-pointer",
+                      isCorporateLoggedToday
+                        ? "bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700"
+                        : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-indigo-500/25"
+                    )}
+                  >
+                    <Zap className="w-3.5 h-3.5 text-amber-300" />
+                    {isLoggingCorporate
+                      ? "Logging..."
+                      : isCorporateLoggedToday
+                      ? "+ Log Extra ₹50"
+                      : "⚡ Log Today's ₹50"}
+                  </Button>
                 </div>
               </CardContent>
             </Card>
 
-            {/* AI Insights Card */}
-            <AIInsights
-              insights={insights}
-              loading={insightsLoading}
-              error={insightsError}
-              lastUpdated={lastUpdated}
-              onRefresh={refreshInsights}
-              compact={true}
-            />
+            {/* CARD 4: GROQ AI FINANCIAL COPILOT */}
+            <Card className="border border-purple-500/30 bg-gradient-to-br from-indigo-950 via-purple-950 to-slate-950 rounded-2xl shadow-xl overflow-hidden relative group hover:border-purple-400/60 transition-all duration-300">
+              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <Sparkles className="w-24 h-24 text-purple-400" />
+              </div>
+              <CardContent className="p-5 relative z-10 flex flex-col justify-between h-full space-y-4 text-white">
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-[11px] font-bold text-purple-300 uppercase tracking-wider flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-purple-400" /> AI Copilot
+                    </span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-200 border border-purple-400/30">
+                      Llama 3.3
+                    </span>
+                  </div>
+                  <h4 className="text-sm font-bold text-slate-100 line-clamp-1">
+                    {insightsLoading ? "Analyzing financial trends..." : insights[0]?.title || "Budget Optimized"}
+                  </h4>
+                  <p className="text-xs text-purple-200/80 mt-1 line-clamp-2 leading-relaxed">
+                    {insightsLoading
+                      ? "AI is evaluating your multi-bank transactions..."
+                      : insights[0]?.message || "Your spending velocity is within healthy corporate limits."}
+                  </p>
+                </div>
+
+                <div className="pt-2 border-t border-purple-500/20 flex items-center justify-between text-xs">
+                  <span className="text-[11px] text-purple-300/70">
+                    {insights.length} recommendations
+                  </span>
+                  <button
+                    onClick={refreshInsights}
+                    className="text-purple-300 hover:text-white font-semibold flex items-center gap-1 transition-colors"
+                  >
+                    <RefreshCcw className="w-3 h-3" /> Refresh
+                  </button>
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
-          {/* AI Insights Section - Square Boxes */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+          {/* 🏦 3. PREMIER MULTI-BANK ACCOUNT HUB (INTERACTIVE CARDS) */}
+          <div className="rounded-3xl bg-slate-900/90 border border-slate-800 p-5 md:p-7 shadow-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-600 text-white flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                  <CreditCard className="w-6 h-6" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-extrabold text-white flex items-center gap-2">
+                    Linked Bank Accounts & Live Wallets
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                      Active
+                    </span>
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Live balance synchronization across Current, Savings, UPI, and Cash
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Link to="/accounts">
+                  <Button variant="outline" size="sm" className="gap-2 bg-slate-800 border-slate-700 hover:bg-slate-700 text-slate-200 text-xs">
+                    <ArrowRightLeft className="w-3.5 h-3.5 text-blue-400" /> Inter-Account Transfer
+                  </Button>
+                </Link>
+              </div>
+            </div>
+
+            {/* Bank Account Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {bankAccounts.map((acc) => {
+                const isCurrent = acc.type === "current";
+                const isSavings = acc.type === "savings";
+                const isUPI = acc.type === "upi";
+
+                return (
+                  <Link
+                    key={acc.id}
+                    to="/accounts"
+                    className="p-5 rounded-2xl border border-slate-800 hover:border-indigo-500/50 bg-gradient-to-b from-slate-900 to-slate-950 hover:from-slate-850 hover:to-slate-900 transition-all duration-300 group shadow-md hover:shadow-xl hover:-translate-y-0.5 relative overflow-hidden"
+                  >
+                    {/* Top indicator strip */}
+                    <div
+                      className={cn(
+                        "absolute top-0 left-0 right-0 h-1",
+                        isCurrent
+                          ? "bg-gradient-to-r from-blue-500 to-indigo-500"
+                          : isSavings
+                          ? "bg-gradient-to-r from-emerald-500 to-teal-500"
+                          : isUPI
+                          ? "bg-gradient-to-r from-purple-500 to-pink-500"
+                          : "bg-gradient-to-r from-amber-500 to-orange-500"
+                      )}
+                    />
+
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-xs font-bold text-slate-300 group-hover:text-white transition-colors truncate">
+                        {acc.name}
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-mono bg-slate-800/80 px-2 py-0.5 rounded-full border border-slate-700">
+                        {acc.account_number || "•••"}
+                      </span>
+                    </div>
+
+                    <p className="text-2xl font-black text-white tracking-tight group-hover:text-indigo-300 transition-colors">
+                      ₹{Number(acc.balance).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                    </p>
+
+                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-800/80 text-[11px] text-slate-400">
+                      <span className="capitalize">{acc.bank_name || acc.type}</span>
+                      <span className="text-indigo-400 group-hover:translate-x-1 transition-transform font-bold flex items-center gap-1">
+                        View ➔
+                      </span>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 📊 4. MAIN CONTENT SPLIT: TRANSACTIONS & TOP SPENDING */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+            {/* Left 2 Cols: Recent Transactions with Filter */}
+            <div className="lg:col-span-2 space-y-4">
+              <div className="rounded-3xl bg-slate-900/90 border border-slate-800 p-5 md:p-6 shadow-xl">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-slate-300">
+                      <Clock className="w-5 h-5 text-indigo-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-white">Recent Transactions</h3>
+                      <p className="text-xs text-slate-400">Verified multi-bank transaction ledger</p>
+                    </div>
+                  </div>
+
+                  {/* Category Filter Pills */}
+                  <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                    {["all", "food", "transport", "shopping", "utilities"].map((cat) => (
+                      <button
+                        key={cat}
+                        onClick={() => setSelectedCategoryFilter(cat)}
+                        className={cn(
+                          "px-2.5 py-1 rounded-lg font-medium transition-all capitalize cursor-pointer",
+                          selectedCategoryFilter === cat
+                            ? "bg-indigo-600 text-white shadow-sm"
+                            : "bg-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-700"
+                        )}
+                      >
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Transactions List */}
+                {filteredExpenses.length > 0 ? (
+                  <div className="divide-y divide-slate-800/80">
+                    {filteredExpenses.slice(0, 7).map((expense) => (
+                      <div
+                        key={expense.id}
+                        className="py-3.5 hover:bg-slate-800/40 px-2 rounded-xl transition-colors flex items-center justify-between group"
+                      >
+                        <div className="flex items-center gap-3.5 min-w-0">
+                          <div className="w-11 h-11 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-xl shadow-sm group-hover:scale-105 transition-transform">
+                            {categoryEmojis[expense.category] || "📌"}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-semibold text-white text-sm truncate">
+                              {expense.description}
+                            </p>
+                            <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-400 mt-0.5">
+                              <span className="capitalize text-slate-300">{expense.category}</span>
+                              <span>•</span>
+                              <span>{expense.date.toLocaleDateString()}</span>
+                              <span>•</span>
+                              <span className="px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-slate-300 text-[10px]">
+                                {expense.source || "Current Bank Account"}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="text-right pl-3 shrink-0">
+                          <p className="font-black text-white text-sm group-hover:text-rose-400 transition-colors">
+                            -₹{expense.amount.toFixed(2)}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="py-12 text-center space-y-3">
+                    <div className="w-14 h-14 rounded-2xl bg-slate-800/60 border border-slate-700 mx-auto flex items-center justify-center text-slate-400">
+                      <Wallet className="w-7 h-7" />
+                    </div>
+                    <p className="text-sm font-medium text-slate-300">No transactions found</p>
+                    <p className="text-xs text-slate-500">Try adjusting your search or category filter</p>
+                  </div>
+                )}
+
+                <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
+                  <span>Showing {Math.min(filteredExpenses.length, 7)} of {filteredExpenses.length} transactions</span>
+                  <Link to="/analytics" className="text-indigo-400 hover:text-indigo-300 font-bold flex items-center gap-1">
+                    View Analytics Report <ArrowUpRight className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
+              </div>
+            </div>
+
+            {/* Right 1 Col: Top Spending & Quick Actions */}
+            <div className="space-y-6">
+
+              {/* Top Categories */}
+              <div className="rounded-3xl bg-slate-900/90 border border-slate-800 p-5 md:p-6 shadow-xl space-y-5">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-bold text-white text-base flex items-center gap-2">
+                    <Target className="w-4 h-4 text-indigo-400" />
+                    Category Allocation
+                  </h3>
+                  <span className="text-[10px] text-slate-400 font-mono">This Month</span>
+                </div>
+
+                {sortedCategories.length > 0 ? (
+                  <div className="space-y-4">
+                    {sortedCategories.map((item) => {
+                      const pct = monthlySpent > 0 ? Math.round((item.amount / monthlySpent) * 100) : 0;
+                      return (
+                        <div key={item.category} className="space-y-1.5">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-slate-300 font-medium capitalize flex items-center gap-1.5">
+                              <span>{categoryEmojis[item.category]}</span> {item.category}
+                            </span>
+                            <span className="font-bold text-white">
+                              ₹{item.amount.toLocaleString()} ({pct}%)
+                            </span>
+                          </div>
+                          <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full"
+                              style={{ width: `${Math.min(pct, 100)}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-500 text-center py-6">
+                    Category distribution will appear as you spend.
+                  </p>
+                )}
+              </div>
+
+              {/* Executive Shortcuts Box */}
+              <div className="rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 border border-indigo-500/30 p-5 md:p-6 shadow-xl space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-bold text-white text-sm flex items-center gap-2">
+                    <Layers className="w-4 h-4 text-indigo-400" /> Executive Shortcuts
+                  </h4>
+                  <span className="text-[10px] text-indigo-300 bg-indigo-500/20 px-2 py-0.5 rounded-full font-bold">
+                    Fast Access
+                  </span>
+                </div>
+
+                <div className="space-y-2.5">
+                  <Link to="/budget">
+                    <Button variant="outline" className="w-full justify-between bg-slate-900/60 border-slate-700/80 hover:bg-slate-800 text-slate-200 text-xs py-5 rounded-xl group">
+                      <span className="flex items-center gap-2">
+                        <Target className="w-4 h-4 text-emerald-400" /> Adjust Monthly Budget
+                      </span>
+                      <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                    </Button>
+                  </Link>
+
+                  <Link to="/accounts">
+                    <Button variant="outline" className="w-full justify-between bg-slate-900/60 border-slate-700/80 hover:bg-slate-800 text-slate-200 text-xs py-5 rounded-xl group">
+                      <span className="flex items-center gap-2">
+                        <ArrowRightLeft className="w-4 h-4 text-blue-400" /> Manage Bank Balances
+                      </span>
+                      <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                    </Button>
+                  </Link>
+
+                  <Link to="/analytics">
+                    <Button variant="outline" className="w-full justify-between bg-slate-900/60 border-slate-700/80 hover:bg-slate-800 text-slate-200 text-xs py-5 rounded-xl group">
+                      <span className="flex items-center gap-2">
+                        <PieChart className="w-4 h-4 text-purple-400" /> Financial Analytics & Trends
+                      </span>
+                      <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          {/* 🧠 5. AI FINANCIAL INTELLIGENCE DECK */}
+          <div className="rounded-3xl bg-slate-900/90 border border-slate-800 p-5 md:p-7 shadow-xl">
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                    AI Financial Intelligence Deck
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-400/30">
+                      Live Groq AI
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-400">Personalized recommendations for Aptean corporate & daily spends</p>
+                </div>
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={refreshInsights}
+                className="gap-1.5 text-xs bg-slate-800 border-slate-700 hover:bg-slate-700 text-slate-300"
+              >
+                <RefreshCcw className="w-3 h-3" /> Re-Analyze
+              </Button>
+            </div>
+
             <AIInsights
               insights={insights}
               loading={insightsLoading}
@@ -535,306 +902,6 @@ export default function Dashboard() {
             />
           </div>
 
-          {/* Daily Corporate Company Spend Tracker Card */}
-          <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-6 md:p-8 shadow-xl relative overflow-hidden border border-indigo-900/40">
-            <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
-              <Building2 className="w-48 h-48 text-blue-400" />
-            </div>
-            <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-              <div className="space-y-3 max-w-2xl">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 border border-blue-400/30 uppercase tracking-wider flex items-center gap-1.5">
-                    <Briefcase className="w-3.5 h-3.5" /> Corporate Spend
-                  </span>
-                  <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
-                    🏢 Current Bank Account
-                  </span>
-                  {isCorporateLoggedToday ? (
-                    <span className="text-xs font-bold px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 flex items-center gap-1">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Logged Today: ₹{corporateLoggedTodayAmount}
-                    </span>
-                  ) : (
-                    <span className="text-xs font-bold px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/30 flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5 text-amber-400" /> Pending for Today
-                    </span>
-                  )}
-                </div>
-
-                <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white">
-                  Corporate Daily Spend: <span className="text-blue-400">₹50 / Day</span>
-                </h2>
-                <p className="text-slate-300 text-sm md:text-base leading-relaxed">
-                  Track your routine daily company office expenses (tea, coffee, snacks, lunch allowance). Automatically debited from your <strong>Current Bank Account</strong>.
-                </p>
-
-                <div className="flex flex-wrap items-center gap-4 text-xs md:text-sm text-slate-300 pt-2 border-t border-slate-800">
-                  <div>
-                    <span className="text-slate-400">This Month Logged: </span>
-                    <span className="font-bold text-white">₹{monthlyCorporateTotal.toLocaleString()}</span>
-                    <span className="text-slate-400"> ({daysLoggedThisMonth} {daysLoggedThisMonth === 1 ? 'day' : 'days'})</span>
-                  </div>
-                  <div className="hidden sm:inline text-slate-600">•</div>
-                  <div>
-                    <span className="text-slate-400">Monthly Routine Allowance: </span>
-                    <span className="font-bold text-blue-300">₹1,500</span>
-                    <span className="text-slate-400"> (within ₹30,000 monthly income)</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex flex-col sm:flex-row lg:flex-col gap-3 min-w-[230px]">
-                <Button
-                  onClick={handleQuickLogCorporate50}
-                  disabled={isLoggingCorporate}
-                  className={cn(
-                    "w-full py-6 px-6 rounded-2xl font-bold text-base shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer",
-                    isCorporateLoggedToday
-                      ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-500/20"
-                      : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-blue-500/30 hover:scale-[1.02]"
-                  )}
-                >
-                  <Zap className="w-5 h-5 text-amber-300" />
-                  {isLoggingCorporate
-                    ? "Logging ₹50..."
-                    : isCorporateLoggedToday
-                      ? "+ Log Another ₹50"
-                      : "⚡ Log Today's ₹50"}
-                </Button>
-                <Link to="/add-expense">
-                  <Button
-                    variant="outline"
-                    className="w-full rounded-2xl border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-slate-200 text-xs font-semibold py-4"
-                  >
-                    Custom Corporate Expense
-                  </Button>
-                </Link>
-              </div>
-            </div>
-          </div>
-
-          {/* Linked Bank Accounts Live Balance Widget */}
-          <div className="bg-white rounded-3xl p-6 md:p-8 border border-border shadow-sm">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white flex items-center justify-center shadow-md shadow-blue-500/20">
-                  <Landmark className="w-6 h-6" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-foreground text-xl flex items-center gap-2">
-                    Linked Bank Accounts & Liquid Balances
-                    <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                      Live Ledger
-                    </span>
-                  </h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Real-time balances across your Current Bank Account, Savings, UPI & Cash
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Link to="/accounts">
-                  <Button variant="outline" size="sm" className="gap-2">
-                    <ArrowRightLeft className="w-3.5 h-3.5" /> Transfer / Manage Accounts
-                  </Button>
-                </Link>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              {bankAccounts.map((acc) => (
-                <Link
-                  key={acc.id}
-                  to="/accounts"
-                  className="p-5 rounded-2xl border border-slate-100 hover:border-blue-300 bg-slate-50/60 hover:bg-blue-50/30 transition-all group shadow-sm hover:shadow"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-bold text-slate-600 truncate">{acc.name}</span>
-                    <span className="text-[10px] text-slate-400 font-mono">{acc.account_number}</span>
-                  </div>
-                  <p className="text-2xl font-extrabold text-foreground group-hover:text-blue-600 transition-colors">
-                    ₹{Number(acc.balance).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                  </p>
-                  <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-200/60 text-[10px] text-slate-400">
-                    <span className="capitalize">{acc.bank_name || acc.type}</span>
-                    <span className="text-blue-600 font-semibold group-hover:translate-x-0.5 transition-transform">View ➔</span>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-
-          {/* Main Content Area */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Recent Activity */}
-            <div className="lg:col-span-2 space-y-6">
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
-                      <Clock className="w-5 h-5 text-slate-600" />
-                    </div>
-                    <div>
-                      <h2 className="text-xl font-bold text-foreground">Recent Transactions</h2>
-                      <p className="text-sm text-muted-foreground">Latest expense activity</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Button variant="outline" size="sm" className="gap-2">
-                      <Filter className="w-4 h-4" />
-                      Filter
-                    </Button>
-                    <Link to="/analytics">
-                      <Button variant="outline" size="sm" className="gap-2">
-                        <Eye className="w-4 h-4" />
-                        View All
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                {expenses.length > 0 ? (
-                  <div className="divide-y divide-slate-100">
-                    {expenses.slice(0, 5).map((expense) => (
-                      <div
-                        key={expense.id}
-                        className="p-4 hover:bg-slate-50 transition-colors flex items-center justify-between group"
-                      >
-                        <div className="flex items-center gap-4">
-                          <div
-                            className={cn(
-                              "w-12 h-12 rounded-xl flex items-center justify-center text-2xl shadow-sm group-hover:scale-110 transition-transform duration-300",
-                              categoryColors[expense.category]
-                                ? `bg-${categoryColors[expense.category]}-50`
-                                : "bg-slate-50",
-                            )}
-                          >
-                            {categoryEmojis[expense.category]}
-                          </div>
-                          <div>
-                            <p className="font-semibold text-foreground">
-                              {expense.description}
-                            </p>
-                            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mt-1">
-                              <span className="capitalize px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">
-                                {expense.category}
-                              </span>
-                              <span>•</span>
-                              <span>{expense.date.toLocaleDateString()}</span>
-                              <span>•</span>
-                              <span className={cn("text-[10px] font-semibold px-2 py-0.5 rounded-full border flex items-center gap-1", getAccountBadge(expense.source).color)}>
-                                <span>{getAccountBadge(expense.source).icon}</span>
-                                <span>{getAccountBadge(expense.source).label}</span>
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-bold text-foreground">
-                            -₹{expense.amount.toFixed(2)}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="p-12 text-center">
-                    <div className="w-16 h-16 rounded-full bg-slate-50 mx-auto flex items-center justify-center mb-4">
-                      <Wallet className="w-8 h-8 text-slate-300" />
-                    </div>
-                    <h3 className="text-lg font-medium text-foreground mb-1">
-                      No expenses yet
-                    </h3>
-                    <p className="text-muted-foreground mb-4">
-                      Start tracking your spending to see it here.
-                    </p>
-                    <Link to="/add-expense">
-                      <Button variant="outline">Add First Expense</Button>
-                    </Link>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Side Panel: Top Spend & Actions */}
-            <div className="space-y-6">
-              {/* Top Categories */}
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-                <h3 className="font-bold text-foreground mb-6 flex items-center gap-2">
-                  <Target className="w-5 h-5 text-muted-foreground" />
-                  Top Spending
-                </h3>
-                {sortedCategories.length > 0 ? (
-                  <div className="space-y-5">
-                    {sortedCategories.map((item) => (
-                      <div key={item.category} className="space-y-2">
-                        <div className="flex items-center justify-between text-sm">
-                          <div className="flex items-center gap-2">
-                            <span>{categoryEmojis[item.category]}</span>
-                            <span className="font-medium text-slate-700 capitalize">
-                              {item.category}
-                            </span>
-                          </div>
-                          <span className="font-bold text-foreground">
-                            ₹{item.amount.toFixed(2)}
-                          </span>
-                        </div>
-                        <div className="h-2 w-full bg-slate-50 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-slate-800 rounded-full"
-                            style={{
-                              width: `${(
-                                (item.amount / monthlySpent) *
-                                100
-                              ).toFixed(0)}%`,
-                            }}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-slate-500 text-center py-4">
-                    Data will appear here
-                  </p>
-                )}
-              </div>
-
-              {/* Enhanced Quick Actions */}
-              <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl shadow-xl p-6 text-white relative overflow-hidden border border-slate-700/50">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-full -mr-16 -mt-16 blur-2xl"></div>
-                <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-purple-500/10 to-blue-500/10 rounded-full -ml-12 -mb-12 blur-xl"></div>
-
-                <div className="relative z-10">
-                  <h3 className="font-bold mb-6 text-lg flex items-center gap-2">
-                    <Settings className="w-5 h-5" />
-                    Quick Actions
-                  </h3>
-                  <div className="space-y-3">
-                    <Link to="/budget">
-                      <Button variant="secondary" className="w-full justify-start bg-white/10 hover:bg-white/20 text-white border-0 backdrop-blur-sm transition-all hover:scale-[1.02] group">
-                        <Target className="w-4 h-4 mr-3 group-hover:scale-110 transition-transform" />
-                        <div className="text-left">
-                          <div className="font-medium">Adjust Budget</div>
-                          <div className="text-xs text-white/70">Modify spending limits</div>
-                        </div>
-                      </Button>
-                    </Link>
-                    <Link to="/settings">
-                      <Button variant="secondary" className="w-full justify-start bg-white/10 hover:bg-white/20 text-white border-0 backdrop-blur-sm transition-all hover:scale-[1.02] group">
-                        <Download className="w-4 h-4 mr-3 group-hover:scale-110 transition-transform" />
-                        <div className="text-left">
-                          <div className="font-medium">Export Data</div>
-                          <div className="text-xs text-white/70">Download your records</div>
-                        </div>
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </Layout>

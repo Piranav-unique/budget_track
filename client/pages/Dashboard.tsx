@@ -30,6 +30,8 @@ import {
   Layers,
   ArrowDownRight,
   PieChart,
+  CalendarCheck,
+  AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -68,6 +70,7 @@ export default function Dashboard() {
   const { toast } = useToast();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [bankAccounts, setBankAccounts] = useState<any[]>([]);
+  const [bills, setBills] = useState<any[]>([]);
   const [isLoggingCorporate, setIsLoggingCorporate] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>("all");
@@ -88,6 +91,18 @@ export default function Dashboard() {
       }
     } catch (e) {
       console.warn("Could not load accounts:", e);
+    }
+  };
+
+  const fetchBills = async () => {
+    try {
+      const res = await fetch("/api/bills");
+      if (res.ok) {
+        const data = await res.json();
+        setBills(data.bills || []);
+      }
+    } catch (e) {
+      console.warn("Could not load bills:", e);
     }
   };
 
@@ -206,9 +221,11 @@ export default function Dashboard() {
   useEffect(() => {
     fetchExpenses();
     fetchAccounts();
+    fetchBills();
     const interval = setInterval(() => {
       fetchExpenses();
       fetchAccounts();
+      fetchBills();
     }, 10000);
 
     loadBudget();
@@ -247,6 +264,17 @@ export default function Dashboard() {
     d1.getFullYear() === d2.getFullYear() &&
     d1.getMonth() === d2.getMonth() &&
     d1.getDate() === d2.getDate();
+
+  // All Expenses Today & Burn Rate Calculations
+  const todayExpenses = expenses.filter((e) => isSameDay(e.date, now));
+  const todayTotalSpent = todayExpenses.reduce((sum, e) => sum + e.amount, 0);
+  const todayRemainingAllowance = Math.max(0, dailySafeSpend - todayTotalSpent);
+  const todayBurnProgressPct = dailySafeSpend > 0 ? Math.min(100, Math.round((todayTotalSpent / dailySafeSpend) * 100)) : 0;
+  const isTodayOverLimit = todayTotalSpent > dailySafeSpend;
+
+  // Upcoming Bills (due within 5 days and unpaid this month)
+  const upcomingBills = bills.filter((b) => !b.is_paid_this_month && b.days_until_due <= 5 && b.days_until_due >= 0);
+  const totalUpcomingBillsAmount = upcomingBills.reduce((sum, b) => sum + Number(b.amount || 0), 0);
 
   const todayCorporateExpenses = expenses.filter(
     (e) =>
@@ -435,6 +463,147 @@ export default function Dashboard() {
                 <div
                   className="bg-emerald-500 rounded-full transition-all duration-500"
                   style={{ width: `${Math.min(spendProgressPct, 100)}%` }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* 📅 UPCOMING BILLS ALERT (If any due in next 5 days) */}
+          {upcomingBills.length > 0 && (
+            <div className="rounded-2xl bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-slate-900 border border-amber-500/30 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-lg">
+              <div className="flex items-start sm:items-center gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+                  <CalendarCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold uppercase tracking-wider text-amber-400">
+                      Upcoming Bills Alert
+                    </span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold">
+                      {upcomingBills.length} Due Soon
+                    </span>
+                  </div>
+                  <p className="text-sm font-semibold text-white mt-0.5">
+                    ₹{totalUpcomingBillsAmount.toLocaleString()} commitment due in the next 5 days
+                  </p>
+                  <p className="text-xs text-slate-400">
+                    {upcomingBills.map((b) => `${b.name} (₹${b.amount} due ${b.days_until_due === 0 ? "today" : `in ${b.days_until_due}d`})`).join(" • ")}
+                  </p>
+                </div>
+              </div>
+              <Link to="/bills">
+                <Button className="shrink-0 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs px-4 py-2 rounded-xl shadow transition-all flex items-center gap-1.5 cursor-pointer">
+                  <span>Pay & Settle Bills</span>
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </Link>
+            </div>
+          )}
+
+          {/* ⚡ 2.5 SAFE-TO-SPEND TODAY PACING GAUGE */}
+          <div className="rounded-2xl bg-gradient-to-br from-slate-900 via-slate-900/90 to-indigo-950/40 border border-slate-800 p-5 md:p-6 shadow-xl relative overflow-hidden">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+              <div className="flex items-center gap-3">
+                <div className={cn(
+                  "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border",
+                  isTodayOverLimit 
+                    ? "bg-rose-500/10 text-rose-400 border-rose-500/20"
+                    : todayBurnProgressPct > 75
+                    ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                    : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                )}>
+                  <Zap className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-bold text-white">Safe-to-Spend Today</h3>
+                    <span className={cn(
+                      "text-[10px] font-bold px-2 py-0.5 rounded-full border",
+                      isTodayOverLimit
+                        ? "bg-rose-500/15 text-rose-300 border-rose-500/30"
+                        : todayBurnProgressPct > 75
+                        ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
+                        : "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
+                    )}>
+                      {isTodayOverLimit
+                        ? "⚠️ Over Daily Budget"
+                        : todayBurnProgressPct > 75
+                        ? "⚡ Burn Rate Elevated"
+                        : "🟢 Healthy Daily Pace"}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400">
+                    Dynamic daily burn runway based on remaining ₹{monthlyRemaining.toLocaleString()} over {daysRemainingInMonth} days
+                  </p>
+                </div>
+              </div>
+
+              {/* Quick 1-Click Office Spend CTA */}
+              <Button
+                onClick={handleQuickLogCorporate50}
+                disabled={isLoggingCorporate}
+                className={cn(
+                  "shrink-0 font-semibold text-xs px-4 py-2.5 rounded-xl cursor-pointer shadow-sm transition-all",
+                  isCorporateLoggedToday
+                    ? "bg-slate-800 hover:bg-slate-750 text-slate-300 border border-slate-700"
+                    : "bg-indigo-600 hover:bg-indigo-500 text-white"
+                )}
+              >
+                <Zap className="w-3.5 h-3.5 mr-1 text-amber-300" />
+                {isLoggingCorporate ? "Logging..." : isCorporateLoggedToday ? "+ Log Another ₹50" : "1-Click ₹50 Office Spend"}
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 p-4 rounded-xl bg-slate-950/70 border border-slate-800/80 mb-4">
+              <div className="space-y-1">
+                <p className="text-[11px] font-medium text-slate-400">Today's Remaining Allowance</p>
+                <p className={cn("text-2xl font-black", isTodayOverLimit ? "text-rose-400" : "text-white")}>
+                  ₹{todayRemainingAllowance.toLocaleString()}
+                </p>
+                <p className="text-[10px] text-slate-500">Unspent safe limit for today</p>
+              </div>
+
+              <div className="space-y-1 border-t sm:border-t-0 sm:border-l border-slate-800 pt-3 sm:pt-0 sm:pl-4">
+                <p className="text-[11px] font-medium text-slate-400">Spent Today</p>
+                <p className={cn("text-2xl font-black", isTodayOverLimit ? "text-rose-400" : "text-white")}>
+                  ₹{todayTotalSpent.toLocaleString()}
+                </p>
+                <p className="text-[10px] text-slate-500">
+                  {todayExpenses.length} transaction{todayExpenses.length === 1 ? "" : "s"} today
+                </p>
+              </div>
+
+              <div className="space-y-1 border-t sm:border-t-0 sm:border-l border-slate-800 pt-3 sm:pt-0 sm:pl-4">
+                <p className="text-[11px] font-medium text-slate-400">Daily Target Pace</p>
+                <p className="text-2xl font-black text-indigo-400">
+                  ₹{dailySafeSpend.toLocaleString()} / day
+                </p>
+                <p className="text-[10px] text-slate-500">Recalculates automatically</p>
+              </div>
+            </div>
+
+            {/* Daily burn progress bar */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-xs text-slate-400">
+                <span>Today's Allowance Consumed: {todayBurnProgressPct}%</span>
+                <span>
+                  {isTodayOverLimit
+                    ? `₹${(todayTotalSpent - dailySafeSpend).toLocaleString()} over daily limit`
+                    : `₹${todayRemainingAllowance.toLocaleString()} left before exceeding`}
+                </span>
+              </div>
+              <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
+                <div
+                  className={cn(
+                    "h-full rounded-full transition-all duration-300",
+                    isTodayOverLimit
+                      ? "bg-rose-500"
+                      : todayBurnProgressPct > 75
+                      ? "bg-amber-400"
+                      : "bg-emerald-400"
+                  )}
+                  style={{ width: `${Math.min(todayBurnProgressPct, 100)}%` }}
                 />
               </div>
             </div>

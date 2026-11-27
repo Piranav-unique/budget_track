@@ -13,7 +13,10 @@ import {
   Mail,
   Edit2,
   Key,
+  Sun,
+  Moon,
 } from "lucide-react";
+import { ThemeSelector } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
@@ -313,6 +316,12 @@ function SettingsContent() {
 
         {/* App Settings */}
         <SettingGroup title="Preferences">
+          <SettingItem
+            icon={Moon}
+            label="Appearance Theme"
+            subLabel="Switch between Dark, Light, or System mode"
+            action={<ThemeSelector />}
+          />
           <SettingItem
             icon={Bell}
             label="Notifications"

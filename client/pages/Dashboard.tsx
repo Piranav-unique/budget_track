@@ -47,6 +47,7 @@ import {
 import { cn } from "@/lib/utils";
 import Layout from "@/components/Layout";
 import { QuickAddIncomeModal } from "@/components/QuickAddIncomeModal";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { useAIInsights } from "@/hooks/use-ai-insights";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -329,28 +330,30 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-slate-950 text-slate-100 p-4 sm:p-6 lg:p-8 space-y-8">
+      <div className="min-h-screen bg-slate-50/70 dark:bg-slate-950 text-slate-900 dark:text-slate-100 p-4 sm:p-6 lg:p-8 space-y-8 transition-colors duration-200">
         <div className="max-w-7xl mx-auto space-y-8">
 
           {/* 🌟 1. CLEAN TOP HEADER (COPILOT MONEY STYLE) */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-850">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200 dark:border-slate-800">
             <div>
-              <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-1">
-                <Calendar className="w-3.5 h-3.5 text-indigo-400" />
+              <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">
+                <Calendar className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" />
                 <span>{currentMonthName} {now.getFullYear()}</span>
                 <span>•</span>
-                <span className="text-emerald-400 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400" />
                   Synced
                 </span>
               </div>
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
                 Cash Flow & Spending
               </h1>
             </div>
 
             {/* Header Action Buttons */}
             <div className="flex flex-wrap items-center gap-2.5">
+              <ThemeToggle showLabel className="h-9 px-3" />
+
               <QuickAddIncomeModal
                 trigger={
                   <Button className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs px-3.5 py-2 rounded-xl shadow-sm transition-all cursor-pointer">
@@ -377,7 +380,7 @@ export default function Dashboard() {
                 size="sm"
                 onClick={handleExportCSV}
                 disabled={isExporting}
-                className="bg-slate-900 border-slate-800 hover:bg-slate-800 text-slate-300 text-xs px-3 py-2 rounded-xl"
+                className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs px-3 py-2 rounded-xl"
               >
                 <Download className="w-3.5 h-3.5 mr-1.5" />
                 Export
@@ -392,7 +395,7 @@ export default function Dashboard() {
                   refreshInsights();
                   toast({ title: "Updated", description: "Accounts and expenses reloaded." });
                 }}
-                className="bg-slate-900 border-slate-800 hover:bg-slate-800 text-slate-300 text-xs p-2 rounded-xl"
+                className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs p-2 rounded-xl"
               >
                 <RefreshCcw className="w-3.5 h-3.5" />
               </Button>
@@ -400,53 +403,53 @@ export default function Dashboard() {
           </div>
 
           {/* 💎 2. SIGNATURE CASH FLOW BAR (COPILOT MONEY #1 COMPONENT) */}
-          <div className="rounded-2xl bg-slate-900 border border-slate-800 p-6 md:p-8 shadow-xl relative overflow-hidden">
+          <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-6 md:p-8 shadow-sm dark:shadow-xl relative overflow-hidden transition-colors">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
               
               {/* Left Column: Remaining Safe to Spend */}
               <div className="lg:col-span-5 space-y-2">
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   Left to Spend this Month
                 </p>
                 <div className="flex items-baseline gap-3">
-                  <h2 className="text-4xl sm:text-5xl font-black tracking-tight text-white">
+                  <h2 className="text-4xl sm:text-5xl font-black tracking-tight text-slate-900 dark:text-white">
                     ₹{monthlyRemaining.toLocaleString()}
                   </h2>
-                  <span className="text-sm font-medium text-slate-400">
+                  <span className="text-sm font-medium text-slate-500 dark:text-slate-400">
                     of ₹{monthlyLimit.toLocaleString()}
                   </span>
                 </div>
-                <p className="text-xs text-slate-300 flex items-center gap-1.5 pt-1">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />
-                  <span>Safe to spend: <strong className="text-white">₹{dailySafeSpend} / day</strong> for {daysRemainingInMonth} days left</span>
+                <p className="text-xs text-slate-600 dark:text-slate-300 flex items-center gap-1.5 pt-1">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 dark:bg-emerald-400 inline-block" />
+                  <span>Safe to spend: <strong className="text-slate-900 dark:text-white">₹{dailySafeSpend} / day</strong> for {daysRemainingInMonth} days left</span>
                 </p>
               </div>
 
               {/* Right Column: 3 Clean Metrics (Income, Spent, Savings) */}
-              <div className="lg:col-span-7 grid grid-cols-3 gap-3 sm:gap-4 p-4 rounded-xl bg-slate-950/60 border border-slate-800/80">
+              <div className="lg:col-span-7 grid grid-cols-3 gap-3 sm:gap-4 p-4 rounded-xl bg-slate-50/90 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800/80">
                 <div className="space-y-1">
-                  <p className="text-[11px] font-medium text-slate-400 flex items-center gap-1">
-                    <ArrowDownRight className="w-3.5 h-3.5 text-emerald-400" /> Income
+                  <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                    <ArrowDownRight className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> Income
                   </p>
-                  <p className="text-lg sm:text-xl font-bold text-white">
+                  <p className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
                     ₹{(budget.income || 30000).toLocaleString()}
                   </p>
                 </div>
 
-                <div className="space-y-1 border-l border-slate-800 pl-3 sm:pl-4">
-                  <p className="text-[11px] font-medium text-slate-400 flex items-center gap-1">
-                    <ArrowUpRight className="w-3.5 h-3.5 text-rose-400" /> Spent
+                <div className="space-y-1 border-l border-slate-200 dark:border-slate-800 pl-3 sm:pl-4">
+                  <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                    <ArrowUpRight className="w-3.5 h-3.5 text-rose-500 dark:text-rose-400" /> Spent
                   </p>
-                  <p className="text-lg sm:text-xl font-bold text-white">
+                  <p className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
                     ₹{monthlySpent.toLocaleString()}
                   </p>
                 </div>
 
-                <div className="space-y-1 border-l border-slate-800 pl-3 sm:pl-4">
-                  <p className="text-[11px] font-medium text-slate-400 flex items-center gap-1">
-                    <Target className="w-3.5 h-3.5 text-indigo-400" /> Savings Goal
+                <div className="space-y-1 border-l border-slate-200 dark:border-slate-800 pl-3 sm:pl-4">
+                  <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                    <Target className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" /> Savings Goal
                   </p>
-                  <p className="text-lg sm:text-xl font-bold text-white">
+                  <p className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
                     ₹{(budget.savingsGoal || 10000).toLocaleString()}
                   </p>
                 </div>
@@ -454,12 +457,12 @@ export default function Dashboard() {
             </div>
 
             {/* Segmented Runway Progress Bar */}
-            <div className="mt-6 pt-5 border-t border-slate-800/80 space-y-2">
-              <div className="flex items-center justify-between text-xs text-slate-400">
+            <div className="mt-6 pt-5 border-t border-slate-200/80 dark:border-slate-800/80 space-y-2">
+              <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
                 <span>Month Passed: {monthProgressPct}% ({currentDay} of {daysInMonth} days)</span>
                 <span>Budget Used: {spendProgressPct.toFixed(1)}%</span>
               </div>
-              <div className="h-2.5 w-full bg-slate-800 rounded-full overflow-hidden flex">
+              <div className="h-2.5 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden flex">
                 <div
                   className="bg-emerald-500 rounded-full transition-all duration-500"
                   style={{ width: `${Math.min(spendProgressPct, 100)}%` }}
@@ -470,24 +473,24 @@ export default function Dashboard() {
 
           {/* 📅 UPCOMING BILLS ALERT (If any due in next 5 days) */}
           {upcomingBills.length > 0 && (
-            <div className="rounded-2xl bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-slate-900 border border-amber-500/30 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-lg">
+            <div className="rounded-2xl bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-white dark:to-slate-900 border border-amber-500/30 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm dark:shadow-lg">
               <div className="flex items-start sm:items-center gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-500 dark:text-amber-400 shrink-0">
                   <CalendarCheck className="w-5 h-5" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold uppercase tracking-wider text-amber-400">
+                    <span className="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
                       Upcoming Bills Alert
                     </span>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold">
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300 font-bold">
                       {upcomingBills.length} Due Soon
                     </span>
                   </div>
-                  <p className="text-sm font-semibold text-white mt-0.5">
+                  <p className="text-sm font-semibold text-slate-900 dark:text-white mt-0.5">
                     ₹{totalUpcomingBillsAmount.toLocaleString()} commitment due in the next 5 days
                   </p>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
                     {upcomingBills.map((b) => `${b.name} (₹${b.amount} due ${b.days_until_due === 0 ? "today" : `in ${b.days_until_due}d`})`).join(" • ")}
                   </p>
                 </div>
@@ -502,29 +505,29 @@ export default function Dashboard() {
           )}
 
           {/* ⚡ 2.5 SAFE-TO-SPEND TODAY PACING GAUGE */}
-          <div className="rounded-2xl bg-gradient-to-br from-slate-900 via-slate-900/90 to-indigo-950/40 border border-slate-800 p-5 md:p-6 shadow-xl relative overflow-hidden">
+          <div className="rounded-2xl bg-gradient-to-br from-white via-white/95 to-indigo-50/40 dark:from-slate-900 dark:via-slate-900/90 dark:to-indigo-950/40 border border-slate-200/90 dark:border-slate-800 p-5 md:p-6 shadow-sm dark:shadow-xl relative overflow-hidden transition-colors">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
               <div className="flex items-center gap-3">
                 <div className={cn(
                   "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border",
                   isTodayOverLimit 
-                    ? "bg-rose-500/10 text-rose-400 border-rose-500/20"
+                    ? "bg-rose-500/10 text-rose-500 dark:text-rose-400 border-rose-500/20"
                     : todayBurnProgressPct > 75
-                    ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
-                    : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                    ? "bg-amber-500/10 text-amber-500 dark:text-amber-400 border-amber-500/20"
+                    : "bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 border-emerald-500/20"
                 )}>
                   <Zap className="w-5 h-5" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-base font-bold text-white">Safe-to-Spend Today</h3>
+                    <h3 className="text-base font-bold text-slate-900 dark:text-white">Safe-to-Spend Today</h3>
                     <span className={cn(
                       "text-[10px] font-bold px-2 py-0.5 rounded-full border",
                       isTodayOverLimit
-                        ? "bg-rose-500/15 text-rose-300 border-rose-500/30"
+                        ? "bg-rose-50 dark:bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-500/30"
                         : todayBurnProgressPct > 75
-                        ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
-                        : "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
+                        ? "bg-amber-50 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/30"
+                        : "bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30"
                     )}>
                       {isTodayOverLimit
                         ? "⚠️ Over Daily Budget"
@@ -533,7 +536,7 @@ export default function Dashboard() {
                         : "🟢 Healthy Daily Pace"}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
                     Dynamic daily burn runway based on remaining ₹{monthlyRemaining.toLocaleString()} over {daysRemainingInMonth} days
                   </p>
                 </div>
@@ -546,7 +549,7 @@ export default function Dashboard() {
                 className={cn(
                   "shrink-0 font-semibold text-xs px-4 py-2.5 rounded-xl cursor-pointer shadow-sm transition-all",
                   isCorporateLoggedToday
-                    ? "bg-slate-800 hover:bg-slate-750 text-slate-300 border border-slate-700"
+                    ? "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
                     : "bg-indigo-600 hover:bg-indigo-500 text-white"
                 )}
               >
@@ -555,37 +558,37 @@ export default function Dashboard() {
               </Button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 p-4 rounded-xl bg-slate-950/70 border border-slate-800/80 mb-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 p-4 rounded-xl bg-slate-50/90 dark:bg-slate-950/70 border border-slate-200/80 dark:border-slate-800/80 mb-4">
               <div className="space-y-1">
-                <p className="text-[11px] font-medium text-slate-400">Today's Remaining Allowance</p>
-                <p className={cn("text-2xl font-black", isTodayOverLimit ? "text-rose-400" : "text-white")}>
+                <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Today's Remaining Allowance</p>
+                <p className={cn("text-2xl font-black", isTodayOverLimit ? "text-rose-500 dark:text-rose-400" : "text-slate-900 dark:text-white")}>
                   ₹{todayRemainingAllowance.toLocaleString()}
                 </p>
-                <p className="text-[10px] text-slate-500">Unspent safe limit for today</p>
+                <p className="text-[10px] text-slate-500 dark:text-slate-500">Unspent safe limit for today</p>
               </div>
 
-              <div className="space-y-1 border-t sm:border-t-0 sm:border-l border-slate-800 pt-3 sm:pt-0 sm:pl-4">
-                <p className="text-[11px] font-medium text-slate-400">Spent Today</p>
-                <p className={cn("text-2xl font-black", isTodayOverLimit ? "text-rose-400" : "text-white")}>
+              <div className="space-y-1 border-t sm:border-t-0 sm:border-l border-slate-200 dark:border-slate-800 pt-3 sm:pt-0 sm:pl-4">
+                <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Spent Today</p>
+                <p className={cn("text-2xl font-black", isTodayOverLimit ? "text-rose-500 dark:text-rose-400" : "text-slate-900 dark:text-white")}>
                   ₹{todayTotalSpent.toLocaleString()}
                 </p>
-                <p className="text-[10px] text-slate-500">
+                <p className="text-[10px] text-slate-500 dark:text-slate-500">
                   {todayExpenses.length} transaction{todayExpenses.length === 1 ? "" : "s"} today
                 </p>
               </div>
 
-              <div className="space-y-1 border-t sm:border-t-0 sm:border-l border-slate-800 pt-3 sm:pt-0 sm:pl-4">
-                <p className="text-[11px] font-medium text-slate-400">Daily Target Pace</p>
-                <p className="text-2xl font-black text-indigo-400">
+              <div className="space-y-1 border-t sm:border-t-0 sm:border-l border-slate-200 dark:border-slate-800 pt-3 sm:pt-0 sm:pl-4">
+                <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Daily Target Pace</p>
+                <p className="text-2xl font-black text-indigo-600 dark:text-indigo-400">
                   ₹{dailySafeSpend.toLocaleString()} / day
                 </p>
-                <p className="text-[10px] text-slate-500">Recalculates automatically</p>
+                <p className="text-[10px] text-slate-500 dark:text-slate-500">Recalculates automatically</p>
               </div>
             </div>
 
             {/* Daily burn progress bar */}
             <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-xs text-slate-400">
+              <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
                 <span>Today's Allowance Consumed: {todayBurnProgressPct}%</span>
                 <span>
                   {isTodayOverLimit
@@ -593,7 +596,7 @@ export default function Dashboard() {
                     : `₹${todayRemainingAllowance.toLocaleString()} left before exceeding`}
                 </span>
               </div>
-              <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
+              <div className="h-2 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
                 <div
                   className={cn(
                     "h-full rounded-full transition-all duration-300",
@@ -613,15 +616,15 @@ export default function Dashboard() {
           <div className="space-y-3">
             <div className="flex items-center justify-between px-1">
               <div>
-                <h3 className="text-base font-bold text-white flex items-center gap-2">
-                  <Landmark className="w-4 h-4 text-indigo-400" />
+                <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Landmark className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
                   Accounts & Net Worth
                 </h3>
-                <p className="text-xs text-slate-400">Total liquid balance across 4 accounts</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Total liquid balance across 4 accounts</p>
               </div>
               <div className="text-right">
-                <span className="text-xs text-slate-400">Total Balance: </span>
-                <span className="text-lg font-black text-white">
+                <span className="text-xs text-slate-500 dark:text-slate-400">Total Balance: </span>
+                <span className="text-lg font-black text-slate-900 dark:text-white">
                   ₹{totalLiquidNetWorth.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                 </span>
               </div>
@@ -632,22 +635,22 @@ export default function Dashboard() {
                 <Link
                   key={acc.id}
                   to="/accounts"
-                  className="p-4 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 transition-all hover:-translate-y-0.5 group"
+                  className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-sm transition-all hover:-translate-y-0.5 group"
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-semibold text-slate-300 truncate">
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate">
                       {acc.name}
                     </span>
-                    <span className="text-[10px] text-slate-400 font-mono">
+                    <span className="text-[10px] text-slate-400 dark:text-slate-400 font-mono">
                       {acc.account_number || "•••"}
                     </span>
                   </div>
-                  <p className="text-xl font-bold text-white group-hover:text-indigo-400 transition-colors">
+                  <p className="text-xl font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                     ₹{Number(acc.balance).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                   </p>
                   <p className="text-[10px] text-slate-500 capitalize mt-1.5 flex items-center justify-between">
                     <span>{acc.bank_name || acc.type}</span>
-                    <span className="text-indigo-400 font-medium group-hover:translate-x-0.5 transition-transform">➔</span>
+                    <span className="text-indigo-600 dark:text-indigo-400 font-medium group-hover:translate-x-0.5 transition-transform">➔</span>
                   </p>
                 </Link>
               ))}
@@ -661,16 +664,16 @@ export default function Dashboard() {
             <div className="lg:col-span-7 space-y-6">
               
               {/* Category Budgets Card */}
-              <div className="rounded-2xl bg-slate-900 border border-slate-800 p-5 md:p-6 shadow-xl space-y-5">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-5 md:p-6 shadow-sm dark:shadow-xl space-y-5">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
                   <div>
-                    <h3 className="text-base font-bold text-white flex items-center gap-2">
-                      <Target className="w-4 h-4 text-emerald-400" />
+                    <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                      <Target className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
                       Monthly Category Budgets
                     </h3>
-                    <p className="text-xs text-slate-400">Track spending limits per category</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Track spending limits per category</p>
                   </div>
-                  <Link to="/budget" className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
+                  <Link to="/budget" className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 flex items-center gap-1">
                     Edit Limits <ChevronRight className="w-3.5 h-3.5" />
                   </Link>
                 </div>
@@ -684,18 +687,18 @@ export default function Dashboard() {
                     return (
                       <div key={cat.category} className="space-y-1.5">
                         <div className="flex items-center justify-between text-xs">
-                          <span className="text-slate-200 font-medium flex items-center gap-2">
+                          <span className="text-slate-700 dark:text-slate-200 font-medium flex items-center gap-2">
                             <span>{cat.icon}</span>
                             <span>{cat.name}</span>
                           </span>
-                          <span className="text-slate-300">
-                            <strong className="text-white">₹{spent.toLocaleString()}</strong> of ₹{cat.limit.toLocaleString()}
-                            <span className={cn("ml-2 font-semibold", isOver ? "text-rose-400" : "text-slate-400")}>
+                          <span className="text-slate-600 dark:text-slate-300">
+                            <strong className="text-slate-900 dark:text-white">₹{spent.toLocaleString()}</strong> of ₹{cat.limit.toLocaleString()}
+                            <span className={cn("ml-2 font-semibold", isOver ? "text-rose-500 dark:text-rose-400" : "text-slate-400")}>
                               ({pct}%)
                             </span>
                           </span>
                         </div>
-                        <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
+                        <div className="h-2 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
                           <div
                             className={cn(
                               "h-full rounded-full transition-all duration-300",
@@ -715,25 +718,25 @@ export default function Dashboard() {
               </div>
 
               {/* Corporate Daily Office Spend Card (Aptean Madurai) */}
-              <div className="rounded-2xl bg-slate-900 border border-slate-800 p-5 md:p-6 shadow-xl space-y-4">
+              <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-5 md:p-6 shadow-sm dark:shadow-xl space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-500/20">
                         Office Allowance
                       </span>
                       {isCorporateLoggedToday ? (
-                        <span className="text-[10px] font-semibold text-emerald-400 flex items-center gap-1">
+                        <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                           <CheckCircle2 className="w-3 h-3" /> Logged Today (₹{corporateLoggedTodayAmount})
                         </span>
                       ) : (
-                        <span className="text-[10px] font-semibold text-amber-400 flex items-center gap-1">
+                        <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1">
                           <Clock className="w-3 h-3" /> Pending Today
                         </span>
                       )}
                     </div>
-                    <h4 className="text-lg font-bold text-white">Daily Corporate Spend: ₹50 / day</h4>
-                    <p className="text-xs text-slate-400 mt-0.5">
+                    <h4 className="text-lg font-bold text-slate-900 dark:text-white">Daily Corporate Spend: ₹50 / day</h4>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                       Snacks, tea, and lunch routine. Charged to Current Bank Account. Total this month: ₹{monthlyCorporateTotal}.
                     </p>
                   </div>
@@ -744,7 +747,7 @@ export default function Dashboard() {
                     className={cn(
                       "shrink-0 font-semibold text-xs px-4 py-2.5 rounded-xl cursor-pointer shadow-sm transition-all",
                       isCorporateLoggedToday
-                        ? "bg-slate-800 hover:bg-slate-750 text-slate-300 border border-slate-700"
+                        ? "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
                         : "bg-indigo-600 hover:bg-indigo-500 text-white"
                     )}
                   >
@@ -759,16 +762,16 @@ export default function Dashboard() {
             <div className="lg:col-span-5 space-y-6">
 
               {/* Transactions Feed */}
-              <div className="rounded-2xl bg-slate-900 border border-slate-800 p-5 md:p-6 shadow-xl space-y-4">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-5 md:p-6 shadow-sm dark:shadow-xl space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
                   <div>
-                    <h3 className="text-base font-bold text-white flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-slate-400" />
+                    <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                       Recent Transactions
                     </h3>
-                    <p className="text-xs text-slate-400">Activity across all accounts</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Activity across all accounts</p>
                   </div>
-                  <Link to="/analytics" className="text-xs font-semibold text-indigo-400 hover:text-indigo-300">
+                  <Link to="/analytics" className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-500">
                     View all ➔
                   </Link>
                 </div>
@@ -781,31 +784,31 @@ export default function Dashboard() {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search transactions..."
-                    className="w-full pl-9 pr-3 py-2 text-xs rounded-xl bg-slate-950 border border-slate-800 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
+                    className="w-full pl-9 pr-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
                   />
                 </div>
 
                 {/* Transaction Rows */}
                 {filteredExpenses.length > 0 ? (
-                  <div className="divide-y divide-slate-800/80">
+                  <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
                     {filteredExpenses.slice(0, 6).map((expense) => (
                       <div key={expense.id} className="py-3 flex items-center justify-between group">
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center text-lg shrink-0">
+                          <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-lg shrink-0">
                             {categoryEmojis[expense.category] || "📌"}
                           </div>
                           <div className="min-w-0">
-                            <p className="text-xs font-semibold text-white truncate group-hover:text-indigo-300 transition-colors">
+                            <p className="text-xs font-semibold text-slate-900 dark:text-white truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition-colors">
                               {expense.description}
                             </p>
-                            <p className="text-[10px] text-slate-400 mt-0.5">
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
                               {expense.date.toLocaleDateString("en-IN", { month: "short", day: "numeric" })} • {expense.source || "Current Account"}
                             </p>
                           </div>
                         </div>
 
                         <div className="text-right pl-3 shrink-0">
-                          <p className="text-xs font-bold text-white">
+                          <p className="text-xs font-bold text-slate-900 dark:text-white">
                             -₹{expense.amount.toFixed(2)}
                           </p>
                         </div>
@@ -813,22 +816,22 @@ export default function Dashboard() {
                     ))}
                   </div>
                 ) : (
-                  <div className="py-8 text-center text-xs text-slate-500">
+                  <div className="py-8 text-center text-xs text-slate-400 dark:text-slate-500">
                     No transactions recorded yet.
                   </div>
                 )}
               </div>
 
               {/* Financial Health Tip (Quiet & Human) */}
-              <div className="rounded-2xl bg-slate-900 border border-slate-800 p-5 space-y-2">
-                <div className="flex items-center gap-2 text-xs font-semibold text-indigo-400">
+              <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-5 shadow-sm dark:shadow-xl space-y-2">
+                <div className="flex items-center gap-2 text-xs font-semibold text-indigo-600 dark:text-indigo-400">
                   <Sparkles className="w-3.5 h-3.5" />
                   <span>Monthly Recommendation</span>
                 </div>
-                <h5 className="text-sm font-bold text-white">
+                <h5 className="text-sm font-bold text-slate-900 dark:text-white">
                   {insights[0]?.title || "Keep tracking daily"}
                 </h5>
-                <p className="text-xs text-slate-400 leading-relaxed">
+                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
                   {insights[0]?.message || "You are currently well within your monthly ₹20,000 spending limit. Continue maintaining your current pace."}
                 </p>
               </div>

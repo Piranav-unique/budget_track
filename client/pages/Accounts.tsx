@@ -308,7 +308,7 @@ export default function Accounts() {
                   <h1 className="text-2xl md:text-3xl font-bold text-foreground tracking-tight">
                     Bank Accounts & Wallets
                   </h1>
-                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20">
                     Live Ledger
                   </span>
                 </div>

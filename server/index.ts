@@ -24,6 +24,13 @@ import { handleRequestOTP, handleVerifyOTP, handleTokenStatus, handleVerifyToken
 import { handleBankSMSWebhook } from "./routes/bank-sms";
 import { handleListReimbursements, handleUpdateReimbursement, handleExportReimbursements } from "./routes/reimbursements";
 import { handleExportCSV, handleExportFinancialSummary } from "./routes/export";
+import {
+  handleListBills,
+  handleCreateBill,
+  handleUpdateBill,
+  handleDeleteBill,
+  handlePayBill
+} from "./routes/bills";
 import { setupAuth } from "./auth";
 import { initDb } from "./db";
 
@@ -79,6 +86,13 @@ export function createServer() {
   app.delete("/api/accounts/:id", handleDeleteAccount);
   app.post("/api/accounts/transfer", handleTransferFunds);
   app.get("/api/accounts/transfers", handleListTransfers);
+
+  // Recurring Bills & Subscriptions endpoints
+  app.get("/api/bills", handleListBills);
+  app.post("/api/bills", handleCreateBill);
+  app.put("/api/bills/:id", handleUpdateBill);
+  app.delete("/api/bills/:id", handleDeleteBill);
+  app.post("/api/bills/:id/pay", handlePayBill);
 
   // AI Insights endpoints
   app.post("/api/ai-insights", handleGetAIInsights);

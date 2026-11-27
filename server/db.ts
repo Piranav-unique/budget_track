@@ -144,6 +144,24 @@ export async function initDb() {
       );
     `);
 
+    // Create recurring_bills table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS recurring_bills (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        amount DECIMAL(10, 2) NOT NULL,
+        category TEXT NOT NULL DEFAULT 'utilities',
+        due_day INTEGER NOT NULL DEFAULT 1,
+        account_name TEXT DEFAULT 'Current Bank Account',
+        auto_deduct BOOLEAN DEFAULT FALSE,
+        last_paid_date TIMESTAMP WITH TIME ZONE,
+        notes TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
     // Create indexes for faster lookups
     await pool.query(`
       CREATE INDEX IF NOT EXISTS idx_mcp_otp_user_email ON mcp_otp_codes(user_id, email);

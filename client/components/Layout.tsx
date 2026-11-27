@@ -1,8 +1,23 @@
 import { Link, useLocation } from "react-router-dom";
 import { useState } from "react";
-import { Menu, X, Wallet, BarChart3, Settings, Plus, Home, Zap, Landmark } from "lucide-react";
+import {
+  Menu,
+  X,
+  Wallet,
+  BarChart3,
+  Settings,
+  Plus,
+  Home,
+  Zap,
+  Landmark,
+  CreditCard,
+  CalendarCheck,
+  LogOut,
+  User,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { QuickAddIncomeModal } from "@/components/QuickAddIncomeModal";
+import { useAuth } from "@/hooks/use-auth";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -11,166 +26,200 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const { user, logoutMutation } = useAuth();
 
   const navItems = [
     { path: "/", label: "Dashboard", icon: Home },
-    { path: "/accounts", label: "Bank Accounts", icon: Landmark },
+    { path: "/accounts", label: "Accounts & Wallets", icon: Landmark },
+    { path: "/bills", label: "Recurring Bills", icon: CalendarCheck },
     { path: "/add-expense", label: "Add Expense", icon: Plus },
-    { path: "/budget", label: "Budget", icon: Wallet },
-    { path: "/analytics", label: "Analytics", icon: BarChart3 },
+    { path: "/budget", label: "Budgets & Limits", icon: Wallet },
+    { path: "/analytics", label: "Analytics & Trends", icon: BarChart3 },
     { path: "/settings", label: "Settings", icon: Settings },
   ];
 
   return (
-    <div className="flex h-screen bg-background">
-      {/* Sidebar */}
-      <div className="hidden md:flex md:w-64 bg-primary flex-col">
-        <div className="p-6 border-b border-primary/20">
-          <Link to="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary-foreground rounded-lg flex items-center justify-center">
-              <Wallet className="w-6 h-6 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-primary-foreground">
-                SmartSpend Flow
-              </h1>
-              <p className="text-xs text-primary-foreground/70">Budget Smart</p>
-            </div>
-          </Link>
-        </div>
+    <div className="flex h-screen bg-slate-950 text-slate-100 overflow-hidden">
+      {/* Desktop Sidebar - Copilot / Monarch Inspired */}
+      <aside className="hidden md:flex md:w-64 bg-slate-900 border-r border-slate-800 flex-col justify-between shrink-0">
+        <div>
+          {/* Brand Header */}
+          <div className="p-6 border-b border-slate-800/80">
+            <Link to="/" className="flex items-center gap-3 group">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/25 group-hover:scale-105 transition-transform">
+                <Wallet className="w-5 h-5" />
+              </div>
+              <div>
+                <h1 className="text-lg font-bold text-white tracking-tight">SmartSpend</h1>
+                <p className="text-[11px] text-slate-400 font-medium">Personal & Corporate</p>
+              </div>
+            </Link>
+          </div>
 
-        <nav className="flex-1 px-4 py-6 space-y-2">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = location.pathname === item.path;
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={cn(
-                  "flex items-center gap-3 px-4 py-3 rounded-lg transition-colors",
-                  isActive
-                    ? "bg-primary-foreground text-primary font-semibold"
-                    : "text-primary-foreground hover:bg-primary-foreground/10",
-                )}
-              >
-                <Icon className="w-5 h-5" />
-                {item.label}
-              </Link>
-            );
-          })}
-
-          {/* Quick Add Income Modal in Main Sidebar */}
-          <div className="pt-2">
-            <QuickAddIncomeModal
-              trigger={
-                <button
-                  type="button"
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-emerald-300 bg-emerald-500/15 hover:bg-emerald-500/25 hover:text-white transition-all text-left font-semibold cursor-pointer border border-emerald-400/30 shadow-sm"
+          {/* Navigation Links */}
+          <nav className="p-4 space-y-1.5">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = location.pathname === item.path;
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={cn(
+                    "flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200",
+                    isActive
+                      ? "bg-indigo-600/15 text-indigo-400 border border-indigo-500/30 shadow-sm"
+                      : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
+                  )}
                 >
-                  <Zap className="w-5 h-5 text-emerald-400" />
-                  <span>+ Quick Income</span>
-                </button>
-              }
-            />
-          </div>
-        </nav>
+                  <Icon className={cn("w-4 h-4", isActive ? "text-indigo-400" : "text-slate-400")} />
+                  {item.label}
+                </Link>
+              );
+            })}
 
-        <div className="p-4 border-t border-primary/20">
-          <div className="bg-primary-foreground/10 rounded-lg p-4 text-center">
-            <p className="text-sm text-primary-foreground/80">
-              Student Budget Pro
-            </p>
-            <p className="text-xs text-primary-foreground/60 mt-1">
-              Master your money
-            </p>
+            {/* Quick Action in Sidebar */}
+            <div className="pt-3">
+              <QuickAddIncomeModal
+                trigger={
+                  <button
+                    type="button"
+                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 transition-all cursor-pointer shadow-sm"
+                  >
+                    <Zap className="w-4 h-4 text-emerald-400" />
+                    <span>+ Quick Income / Bonus</span>
+                  </button>
+                }
+              />
+            </div>
+          </nav>
+        </div>
+
+        {/* User Profile Pill at Bottom */}
+        <div className="p-4 border-t border-slate-800/80 bg-slate-900/60">
+          <div className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-800/50 transition-colors">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-indigo-600 to-violet-600 text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-sm">
+                {user?.username ? user.username.substring(0, 2).toUpperCase() : "PM"}
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-slate-200 truncate">
+                  {user?.display_name || user?.username || "Piranav MN"}
+                </p>
+                <p className="text-[10px] text-slate-500 truncate flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
+                  Live Sync
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => logoutMutation?.mutate()}
+              title="Sign out"
+              className="p-1.5 text-slate-400 hover:text-rose-400 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
         </div>
-      </div>
+      </aside>
 
-      {/* Mobile Header */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-primary text-primary-foreground p-4 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2">
-          <Wallet className="w-6 h-6" />
-          <span className="font-bold">SmartSpend Flow</span>
+      {/* Mobile Top Header */}
+      <header className="md:hidden fixed top-0 left-0 right-0 z-50 bg-slate-900 border-b border-slate-800 px-4 py-3 flex items-center justify-between shadow-md">
+        <Link to="/" className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white">
+            <Wallet className="w-4 h-4" />
+          </div>
+          <span className="font-bold text-white text-base">SmartSpend</span>
         </Link>
         <button
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="p-2"
+          className="p-2 text-slate-300 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
         >
-          {mobileMenuOpen ? <X /> : <Menu />}
+          {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
         </button>
-      </div>
+      </header>
 
-      {/* Mobile Menu Overlay */}
+      {/* Mobile Menu Backdrop */}
       {mobileMenuOpen && (
         <div
-          className="md:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+          className="md:hidden fixed inset-0 z-40 bg-black/70 backdrop-blur-sm transition-opacity"
           onClick={() => setMobileMenuOpen(false)}
         />
       )}
 
-      {/* Mobile Slide-in Menu */}
-      <div className={cn(
-        "md:hidden fixed inset-y-0 left-0 z-50 w-64 bg-background border-r border-border transform transition-transform duration-300 ease-in-out shadow-2xl",
-        mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
-      )}>
-        <div className="p-6 border-b border-border flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <Wallet className="w-5 h-5 text-primary-foreground" />
+      {/* Mobile Slide-in Drawer */}
+      <div
+        className={cn(
+          "md:hidden fixed inset-y-0 left-0 z-50 w-72 bg-slate-900 border-r border-slate-800 transform transition-transform duration-300 ease-in-out shadow-2xl flex flex-col justify-between",
+          mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
+        <div>
+          <div className="p-5 border-b border-slate-800 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white">
+                <Wallet className="w-4 h-4" />
+              </div>
+              <span className="font-bold text-white">SmartSpend</span>
             </div>
-            <span className="font-bold text-lg">Menu</span>
+            <button
+              onClick={() => setMobileMenuOpen(false)}
+              className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
-          <button
-            onClick={() => setMobileMenuOpen(false)}
-            className="p-2 hover:bg-muted rounded-full transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-        <nav className="p-4 space-y-2">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = location.pathname === item.path;
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                onClick={() => setMobileMenuOpen(false)}
-                className={cn(
-                  "flex items-center gap-3 px-4 py-3 rounded-lg transition-colors",
-                  isActive
-                    ? "bg-primary text-primary-foreground font-semibold"
-                    : "text-foreground hover:bg-muted",
-                )}
-              >
-                <Icon className="w-5 h-5" />
-                {item.label}
-              </Link>
-            );
-          })}
 
-          <div className="pt-2">
-            <QuickAddIncomeModal
-              trigger={
-                <button
-                  type="button"
+          <nav className="p-4 space-y-1.5">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = location.pathname === item.path;
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-all text-left font-semibold cursor-pointer border border-emerald-200 shadow-sm"
+                  className={cn(
+                    "flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all",
+                    isActive
+                      ? "bg-indigo-600/15 text-indigo-400 border border-indigo-500/30"
+                      : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
+                  )}
                 >
-                  <Zap className="w-5 h-5 text-emerald-600" />
-                  <span>+ Quick Income</span>
-                </button>
-              }
-            />
-          </div>
-        </nav>
+                  <Icon className="w-4 h-4" />
+                  {item.label}
+                </Link>
+              );
+            })}
+
+            <div className="pt-3">
+              <QuickAddIncomeModal
+                trigger={
+                  <button
+                    type="button"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-left cursor-pointer"
+                  >
+                    <Zap className="w-4 h-4 text-emerald-400" />
+                    <span>+ Quick Income / Bonus</span>
+                  </button>
+                }
+              />
+            </div>
+          </nav>
+        </div>
+
+        <div className="p-4 border-t border-slate-800 bg-slate-900/60">
+          <p className="text-xs font-semibold text-slate-300">
+            {user?.display_name || user?.username || "Piranav MN"}
+          </p>
+          <p className="text-[10px] text-slate-500 mt-0.5">Logged in via Cloud VPS</p>
+        </div>
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <main className="flex-1 overflow-auto pt-16 md:pt-0">{children}</main>
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <main className="flex-1 overflow-y-auto pt-14 md:pt-0">{children}</main>
       </div>
     </div>
   );

@@ -9,7 +9,6 @@ import {
   Plus,
   Home,
   Zap,
-  Landmark,
   CreditCard,
   CalendarCheck,
   LogOut,
@@ -31,7 +30,6 @@ export default function Layout({ children }: LayoutProps) {
 
   const navItems = [
     { path: "/", label: "Dashboard", icon: Home },
-    { path: "/accounts", label: "Accounts & Wallets", icon: Landmark },
     { path: "/bills", label: "Recurring Bills", icon: CalendarCheck },
     { path: "/add-expense", label: "Add Expense", icon: Plus },
     { path: "/budget", label: "Budgets & Limits", icon: Wallet },

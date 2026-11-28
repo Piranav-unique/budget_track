@@ -22,7 +22,6 @@ import {
   Briefcase,
   Building2,
   CheckCircle2,
-  Landmark,
   ArrowRightLeft,
   CreditCard,
   ShieldCheck,
@@ -256,9 +255,6 @@ export default function Dashboard() {
   const monthlyRemaining = monthlyLimit - monthlySpent;
   const spendProgressPct = monthlyLimit > 0 ? (monthlySpent / monthlyLimit) * 100 : 0;
   const dailySafeSpend = Math.max(0, Math.round(monthlyRemaining / daysRemainingInMonth));
-
-  // Liquid Net Worth across all bank accounts
-  const totalLiquidNetWorth = bankAccounts.reduce((sum, acc) => sum + Number(acc.balance || 0), 0);
 
   // Corporate Spend Calculations
   const isSameDay = (d1: Date, d2: Date) =>
@@ -612,52 +608,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* 🏦 3. NET WORTH & ACCOUNTS STRIP (APPLE CARD / REVOLUT STYLE) */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between px-1">
-              <div>
-                <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                  <Landmark className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
-                  Accounts & Net Worth
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Total liquid balance across 4 accounts</p>
-              </div>
-              <div className="text-right">
-                <span className="text-xs text-slate-500 dark:text-slate-400">Total Balance: </span>
-                <span className="text-lg font-black text-slate-900 dark:text-white">
-                  ₹{totalLiquidNetWorth.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                </span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
-              {bankAccounts.map((acc) => (
-                <Link
-                  key={acc.id}
-                  to="/accounts"
-                  className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-sm transition-all hover:-translate-y-0.5 group"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate">
-                      {acc.name}
-                    </span>
-                    <span className="text-[10px] text-slate-400 dark:text-slate-400 font-mono">
-                      {acc.account_number || "•••"}
-                    </span>
-                  </div>
-                  <p className="text-xl font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                    ₹{Number(acc.balance).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                  </p>
-                  <p className="text-[10px] text-slate-500 capitalize mt-1.5 flex items-center justify-between">
-                    <span>{acc.bank_name || acc.type}</span>
-                    <span className="text-indigo-600 dark:text-indigo-400 font-medium group-hover:translate-x-0.5 transition-transform">➔</span>
-                  </p>
-                </Link>
-              ))}
-            </div>
-          </div>
-
-          {/* 🎯 4. MAIN SPLIT: CATEGORY BUDGETS & TRANSACTIONS */}
+          {/* 🎯 3. MAIN SPLIT: CATEGORY BUDGETS & TRANSACTIONS */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
 
             {/* Left 7 Cols: Category Budgets (Monarch Money Style) */}

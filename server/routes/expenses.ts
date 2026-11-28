@@ -445,9 +445,22 @@ export const handleListExpenses: RequestHandler = async (req, res) => {
       });
     }
 
+    // Auto-claim any unassigned expenses (e.g. from n8n or external webhooks where user_id is null)
+    try {
+      await pool.query(
+        `UPDATE expenses 
+         SET user_id = $1, 
+             source = COALESCE(source, 'Current Bank Account') 
+         WHERE user_id IS NULL`,
+        [user.id]
+      );
+    } catch (claimErr) {
+      console.warn("Auto-claim null user_id expenses skipped:", claimErr);
+    }
+
     console.log(`Fetching expenses for user ${user.id} from database...`);
     const result = await pool.query(
-      "SELECT * FROM expenses WHERE user_id = $1 ORDER BY date DESC LIMIT 200",
+      "SELECT * FROM expenses WHERE user_id = $1 OR user_id IS NULL ORDER BY date DESC LIMIT 200",
       [user.id]
     );
     console.log(`Successfully fetched ${result.rows.length} expenses for user ${user.id}.`);

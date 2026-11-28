@@ -45,20 +45,20 @@ export function parseNaturalExpenseText(rawText: string): { amount: number; desc
  */
 export async function getPiranavUserId(): Promise<number> {
   try {
-    // 1. Look for user matching 'piranav' by username, display_name, or email
+    // 1. Look for user matching 'piranav' by username, display_name, or email (prefer active user id DESC)
     const result = await pool.query(
       `SELECT id FROM users 
        WHERE LOWER(username) = 'piranav' 
           OR LOWER(display_name) = 'piranav' 
           OR LOWER(email) LIKE '%piranav%' 
-       ORDER BY id ASC LIMIT 1`
+       ORDER BY id DESC LIMIT 1`
     );
     if (result.rows.length > 0) {
       return result.rows[0].id;
     }
 
-    // 2. Fallback to the first existing user in the database
-    const anyUser = await pool.query("SELECT id FROM users ORDER BY id ASC LIMIT 1");
+    // 2. Fallback to the latest existing user in the database
+    const anyUser = await pool.query("SELECT id FROM users ORDER BY id DESC LIMIT 1");
     if (anyUser.rows.length > 0) {
       return anyUser.rows[0].id;
     }
@@ -445,22 +445,22 @@ export const handleListExpenses: RequestHandler = async (req, res) => {
       });
     }
 
-    // Auto-claim any unassigned expenses (e.g. from n8n or external webhooks where user_id is null)
+    // Auto-claim any unassigned expenses (where user_id is null or legacy user 1)
     try {
       await pool.query(
         `UPDATE expenses 
          SET user_id = $1, 
              source = COALESCE(source, 'Current Bank Account') 
-         WHERE user_id IS NULL`,
+         WHERE user_id IS NULL OR user_id = 1`,
         [user.id]
       );
     } catch (claimErr) {
-      console.warn("Auto-claim null user_id expenses skipped:", claimErr);
+      console.warn("Auto-claim null or legacy user_id expenses skipped:", claimErr);
     }
 
     console.log(`Fetching expenses for user ${user.id} from database...`);
     const result = await pool.query(
-      "SELECT * FROM expenses WHERE user_id = $1 OR user_id IS NULL ORDER BY date DESC LIMIT 200",
+      "SELECT * FROM expenses WHERE user_id = $1 ORDER BY date DESC LIMIT 200",
       [user.id]
     );
     console.log(`Successfully fetched ${result.rows.length} expenses for user ${user.id}.`);

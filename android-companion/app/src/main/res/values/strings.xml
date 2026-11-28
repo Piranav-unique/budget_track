@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">SmartSpend Sync</string>
+    <string name="default_webhook_url">https://budget.aurumgold.co.in/api/webhook/bank-sms</string>
+</resources>

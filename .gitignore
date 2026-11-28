@@ -32,3 +32,10 @@ dist-ssr
 test-*.js
 reset-*.js
 *-test.js
+
+# Android build outputs
+android-companion/.gradle/
+android-companion/build/
+android-companion/app/build/
+android-companion/local.properties
+*.apk

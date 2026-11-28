@@ -3,6 +3,42 @@ import { pool } from "../db";
 import { User } from "../../shared/api";
 import { categorizeWithAI, isGroqAvailable } from "../services/groq";
 import { handleBankSMSWebhook, handleTelegramCallback } from "./bank-sms";
+import { sendTelegramPrompt } from "../services/telegram";
+
+/**
+ * Parses natural conversational expense messages
+ * e.g. "Spent 250 on lunch at KFC", "Spent 200 on petrol", "Tea 50", "250 for KFC"
+ */
+export function parseNaturalExpenseText(rawText: string): { amount: number; description: string } | null {
+  const text = rawText.trim();
+  if (!text) return null;
+
+  // 1. "Spent 250 on lunch at KFC" or "Paid 150 for auto" or "Gave 50 for tea"
+  const m1 = text.match(/(?:spent|paid|used|gave|debited|spent\s+around)\s+(?:rs\.?|inr|₹)?\s*([0-9]+(?:\.[0-9]{1,2})?)\s+(?:on|for|at|towards)\s+(.+)/i);
+  if (m1) {
+    return { amount: parseFloat(m1[1]), description: m1[2].trim() };
+  }
+
+  // 2. "lunch at KFC 250" or "Tea 50" or "Petrol Rs 200"
+  const m2 = text.match(/^(.+?)\s+(?:rs\.?|inr|₹)?\s*([0-9]+(?:\.[0-9]{1,2})?)$/i);
+  if (m2 && isNaN(Number(m2[1]))) {
+    return { amount: parseFloat(m2[2]), description: m2[1].trim() };
+  }
+
+  // 3. "250 on lunch at KFC" or "250 for petrol"
+  const m3 = text.match(/^(?:rs\.?|inr|₹)?\s*([0-9]+(?:\.[0-9]{1,2})?)\s+(?:on|for|at|towards)\s+(.+)/i);
+  if (m3) {
+    return { amount: parseFloat(m3[1]), description: m3[2].trim() };
+  }
+
+  // 4. "250 lunch at KFC" or "50 tea"
+  const m4 = text.match(/^(?:rs\.?|inr|₹)?\s*([0-9]+(?:\.[0-9]{1,2})?)\s+(.+)$/i);
+  if (m4 && isNaN(Number(m4[2]))) {
+    return { amount: parseFloat(m4[1]), description: m4[2].trim() };
+  }
+
+  return null;
+}
 
 /**
  * Find or auto-create the user 'piranav' to associate Telegram / n8n expenses with.
@@ -242,19 +278,37 @@ export const handleTelegramExpense: RequestHandler = async (req, res) => {
       return handleTelegramCallback(req, res, () => {});
     }
 
-    // Auto-detect if this is a raw Bank SMS forwarded from Telegram / n8n
-    const rawSmsCandidate = req.body?.raw_sms || req.body?.message || req.body?.text || (typeof description === "string" && !amount && description.length > 20 ? description : null);
-    if (rawSmsCandidate && (!amount || isNaN(Number(amount)))) {
-      return handleBankSMSWebhook(req, res, () => {});
+    // Auto-detect raw message text (from Telegram bot or n8n)
+    const rawSmsCandidate = req.body?.raw_sms || req.body?.message || req.body?.text || (typeof description === "string" && !amount ? description : null);
+
+    let effectiveDescription = description;
+    let effectiveAmount = amount;
+
+    if (rawSmsCandidate && (!effectiveAmount || isNaN(Number(effectiveAmount)))) {
+      // 1. Check if it's an official bank SMS (e.g. contains account/avl bal/debited by)
+      const isBankSMS = /\b(acct|a\/c|ending|avl\s*bal|balance\s*is|ref\s*no|vpa|debited\s+by|credited\s+by)\b/i.test(rawSmsCandidate);
+      if (isBankSMS) {
+        return handleBankSMSWebhook(req, res, () => {});
+      }
+
+      // 2. Otherwise, parse as conversational natural expense (e.g. "Spent 250 on lunch at KFC", "Spent 200 on petrol", "Tea 50")
+      const parsedNatural = parseNaturalExpenseText(rawSmsCandidate);
+      if (parsedNatural) {
+        effectiveDescription = parsedNatural.description;
+        effectiveAmount = parsedNatural.amount;
+      } else {
+        // Fallback to bank SMS webhook
+        return handleBankSMSWebhook(req, res, () => {});
+      }
     }
 
-    if (!description || typeof description !== "string") {
+    if (!effectiveDescription || typeof effectiveDescription !== "string") {
       return res.status(400).json({
         error: "description is required (e.g. 'Coffee with friends' or 'Grocery')"
       });
     }
 
-    const parsedAmount = Number(amount);
+    const parsedAmount = Number(effectiveAmount);
     if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
       return res.status(400).json({ error: "amount must be a positive number" });
     }
@@ -271,7 +325,7 @@ export const handleTelegramExpense: RequestHandler = async (req, res) => {
     if (!resolvedCategory || resolvedCategory === "other") {
       try {
         if (await isGroqAvailable()) {
-          resolvedCategory = await categorizeWithAI(description);
+          resolvedCategory = await categorizeWithAI(effectiveDescription);
           confidence = "ai";
         } else {
           resolvedCategory = "other";
@@ -281,8 +335,27 @@ export const handleTelegramExpense: RequestHandler = async (req, res) => {
       }
     }
 
-    const effectiveChatId = chat_id || chatId || null;
-    const effectiveSource = source || "telegram";
+    const effectiveChatId = chat_id || chatId || process.env.TELEGRAM_CHAT_ID || null;
+    const effectiveSource = source || "Current Bank Account";
+
+    // Deduct from primary bank account (Current Bank Account)
+    let updatedAccountBalance: number | null = null;
+    let accountName = "Current Bank Account";
+    try {
+      const accRes = await pool.query(
+        `UPDATE bank_accounts 
+         SET balance = balance - $1, updated_at = NOW() 
+         WHERE user_id = $2 AND (is_primary = true OR name ILIKE '%current%')
+         RETURNING name, balance`,
+        [parsedAmount, targetUserId]
+      );
+      if (accRes.rows.length > 0) {
+        updatedAccountBalance = Number(accRes.rows[0].balance);
+        accountName = accRes.rows[0].name;
+      }
+    } catch (e) {
+      console.warn("Could not deduct from bank account:", e);
+    }
 
     const result = await pool.query(
       `INSERT INTO expenses (
@@ -290,28 +363,49 @@ export const handleTelegramExpense: RequestHandler = async (req, res) => {
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING *`,
       [
-        description,
+        effectiveDescription,
         parsedAmount,
         resolvedCategory,
         effectiveDate.toISOString(),
         note || null,
         targetUserId,
         effectiveChatId ? String(effectiveChatId) : null,
-        effectiveSource,
+        accountName,
         confidence,
         new Date().toISOString()
       ]
     );
 
     const expense = result.rows[0];
+
+    const categoryEmojis: Record<string, string> = {
+      food: "🍔",
+      transport: "🚗",
+      shopping: "🛍️",
+      utilities: "⚡",
+      entertainment: "🎬",
+      medical: "🏥",
+      other: "📌",
+    };
+    const emoji = categoryEmojis[resolvedCategory] || "📌";
+
+    const formattedReply = `All good! ₹${parsedAmount} for ${effectiveDescription} under ${resolvedCategory} has been saved ${emoji}` +
+      (updatedAccountBalance !== null ? `\n💳 New balance (${accountName}): ₹${updatedAccountBalance.toLocaleString()}` : "");
+
+    // If chat_id is available, send Telegram message directly!
+    if (effectiveChatId) {
+      await sendTelegramPrompt(effectiveChatId, formattedReply);
+    }
+
     console.log(
-      `✅ [Telegram Webhook] Expense added: ₹${parsedAmount} for "${description}" (${resolvedCategory}) to user Piranav (ID: ${targetUserId})`
+      `✅ [Telegram Webhook] Expense added: ₹${parsedAmount} for "${effectiveDescription}" (${resolvedCategory}) to user Piranav (ID: ${targetUserId})`
     );
 
     return res.status(201).json({
       success: true,
-      message: `Expense of ₹${parsedAmount} for "${description}" added to Piranav's account under "${resolvedCategory}".`,
-      expense
+      message: formattedReply,
+      expense,
+      account_balance: updatedAccountBalance
     });
   } catch (error) {
     console.error("Telegram webhook expense error:", error);

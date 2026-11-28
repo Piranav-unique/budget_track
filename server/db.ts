@@ -187,6 +187,23 @@ export async function initDb() {
       console.warn("Reimbursement columns already present or table alteration skipped:", err?.message);
     });
 
+    // Create merchant_rules table for Contact & Merchant Learning
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS merchant_rules (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        merchant_keyword TEXT NOT NULL,
+        category TEXT NOT NULL,
+        note TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT unique_user_merchant UNIQUE (user_id, merchant_keyword)
+      );
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_merchant_rules_user ON merchant_rules(user_id, merchant_keyword);
+    `);
+
     console.log("Database connected & tables initialized");
   } catch (error) {
     console.error("Error initializing database:", error);

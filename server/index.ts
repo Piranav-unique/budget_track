@@ -21,7 +21,7 @@ import {
 import { handleCreateIncome, handleListIncome, handleUpdateIncome, handleDeleteIncome } from "./routes/income";
 import { handleGetAIInsights, handleGetQuickInsight, handleSuggestBudget } from "./routes/ai-insights";
 import { handleRequestOTP, handleVerifyOTP, handleTokenStatus, handleVerifyToken, handleTestEmail, handleCheckEmail } from "./routes/mcp-auth";
-import { handleBankSMSWebhook } from "./routes/bank-sms";
+import { handleBankSMSWebhook, handleTelegramCallback, handleListMerchantRules, handleDeleteMerchantRule } from "./routes/bank-sms";
 import { handleListReimbursements, handleUpdateReimbursement, handleExportReimbursements } from "./routes/reimbursements";
 import { handleExportCSV, handleExportFinancialSummary } from "./routes/export";
 import {
@@ -56,6 +56,10 @@ export function createServer() {
   app.post("/api/expenses/telegram", handleTelegramExpense);
   app.post("/api/webhook/income", handleCreateIncome);
   app.post("/api/webhook/bank-sms", handleBankSMSWebhook);
+  app.post("/api/webhook/telegram/callback", handleTelegramCallback);
+  app.post("/api/webhook/n8n/callback", handleTelegramCallback);
+  app.get("/api/merchant-rules", handleListMerchantRules);
+  app.delete("/api/merchant-rules/:id", handleDeleteMerchantRule);
 
   // Corporate Reimbursements endpoints (Aptean / Company Employee Claims)
   app.get("/api/reimbursements", handleListReimbursements);

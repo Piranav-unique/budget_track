@@ -17,6 +17,7 @@ import {
   Moon,
 } from "lucide-react";
 import { ThemeSelector } from "@/components/ThemeToggle";
+import { BankSMSAutomationCard } from "@/components/BankSMSAutomationCard";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
@@ -302,6 +303,14 @@ function SettingsContent() {
             action={loading ? <span className="text-xs text-muted-foreground">Exporting...</span> : null}
           />
         </SettingGroup>
+
+        {/* Real Bank SMS & Telegram Automation */}
+        <div className="mb-6">
+          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">
+            Real Banking Automation
+          </h3>
+          <BankSMSAutomationCard />
+        </div>
 
         {/* Integrations */}
         <SettingGroup title="Integrations">
